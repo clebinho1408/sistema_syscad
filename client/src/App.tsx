@@ -11,7 +11,6 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import LoginPage from "@/pages/login";
-import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
 import SolicitationsPage from "@/pages/solicitations/index";
 import NewSolicitationPage from "@/pages/solicitations/new";
@@ -94,7 +93,6 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={LoginPage} />
-      <Route path="/register" component={RegisterPage} />
       <Route path="/">
         <Redirect to="/dashboard" />
       </Route>

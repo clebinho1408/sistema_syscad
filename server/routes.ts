@@ -88,7 +88,7 @@ export async function registerRoutes(
     return res.status(401).json({ message: "Não autenticado" });
   });
 
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const {
         username, password, name, email,
@@ -130,11 +130,11 @@ export async function registerRoutes(
       });
 
       await storage.createAuditLog({
-        userId: user.id,
+        userId: req.user!.id,
         action: "create",
         entity: "driving_school",
         entityId: user.id,
-        details: `Autoescola cadastrada: ${nomeFantasia}`,
+        details: `Autoescola cadastrada pelo admin: ${nomeFantasia}`,
       });
 
       const { password: _, ...userWithoutPassword } = user;

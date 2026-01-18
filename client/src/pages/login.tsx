@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Shield, Car, Loader2 } from "lucide-react";
-import { Link } from "wouter";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -108,15 +107,10 @@ export default function LoginPage() {
             </CardContent>
           </Card>
 
-          <div className="text-center space-y-4">
+          <div className="text-center">
             <p className="text-sm text-muted-foreground">
-              É uma autoescola e ainda não possui conta?
+              Entre em contato com o DETRAN para solicitar acesso ao sistema.
             </p>
-            <Link href="/register">
-              <Button variant="outline" className="w-full" data-testid="link-register">
-                Cadastrar Autoescola
-              </Button>
-            </Link>
           </div>
         </div>
       </main>
