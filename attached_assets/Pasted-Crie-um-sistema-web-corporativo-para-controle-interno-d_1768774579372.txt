@@ -1,0 +1,161 @@
+Crie um sistema web corporativo para controle interno de SOLICITAÇÕES DE CADASTRO e ALTERAÇÕES CADASTRAIS enviadas por autoescolas para a Agência do DETRAN.
+
+O sistema deve funcionar como uma plataforma interna de gestão, com autenticação, níveis de acesso, fluxo de análise, conferência de documentação e comunicação em tempo real.
+
+### PERFIS DE USUÁRIOS
+1. AUTOESCOLA
+2. OPERADOR DO DETRAN
+3. ADMINISTRADOR DO DETRAN (acesso geral e irrestrito)
+
+---
+
+### FUNCIONALIDADES — AUTOESCOLA
+- Cadastro e login
+- Cadastro da autoescola com dados completos:
+  - CNPJ
+  - Razão Social
+  - Nome Fantasia
+  - Endereço completo
+  - Responsável legal
+  - Contatos (telefone e e-mail)
+
+#### SOLICITAÇÕES
+- Criação de múltiplas SOLICITAÇÕES, sem limite
+- Tipos de solicitação:
+  - Novo cadastro de candidato/condutor
+  - Alteração de dados cadastrais do condutor
+  - Atualização cadastral
+  - Regularização
+- Cada solicitação deve conter:
+  - Dados completos do candidato/condutor
+  - Upload de documentos obrigatórios (PDF, JPG, PNG)
+- Possibilidade de criar VÁRIAS solicitações de alteração de dados para um mesmo condutor
+
+#### ACOMPANHAMENTO
+- Acompanhamento do status da solicitação:
+  - Em análise
+  - Pendente de correção
+  - Aprovada
+  - Reprovada
+- Visualização de observações do DETRAN
+- Reenvio de documentos quando solicitado
+- Chat em tempo real com o OPERADOR dentro de cada solicitação
+
+---
+
+### CADASTRO DO CANDIDATO / CONDUTOR
+Campos obrigatórios:
+- CPF
+- Nome completo
+- Nome da mãe
+- Nome do pai
+- Nacionalidade
+- RG
+- Órgão emissor
+- UF emissor
+- Data de nascimento
+- Cidade de nascimento
+- UF de nascimento
+- CEP
+- Tipo de logradouro
+- Rua
+- Número
+- Complemento
+- Bairro
+- Cidade
+- UF
+- Telefone 1
+- Telefone 2
+- E-mail
+
+---
+
+### FUNCIONALIDADES — OPERADOR DO DETRAN
+- Login interno seguro
+- Painel com todas as solicitações recebidas
+- Filtros por:
+  - Autoescola
+  - CPF do candidato/condutor
+  - Tipo de solicitação
+  - Data
+  - Status
+- Visualização detalhada da solicitação
+- Visualização e download dos documentos anexados
+- Checklist de conferência documental:
+  - Documento legível
+  - Documento válido
+  - Documento compatível com a solicitação
+- Conferência e validação das ALTERAÇÕES DE DADOS do condutor
+- Campo para observações internas e externas
+- Alteração de status da solicitação:
+  - Aprovar
+  - Reprovar (com justificativa obrigatória)
+  - Solicitar correção
+- Chat instantâneo com a autoescola vinculado à solicitação
+- Histórico completo de ações (log de auditoria)
+
+---
+
+### FUNCIONALIDADES — ADMINISTRADOR DO DETRAN
+- Acesso geral a todo o sistema
+- Visualização e gerenciamento de TODAS as solicitações
+- Gestão de usuários:
+  - Operadores
+  - Autoescolas
+- Cadastro, edição, bloqueio e desbloqueio de autoescolas
+- Definição de documentos obrigatórios por tipo de solicitação
+- Configuração de regras do sistema
+- Relatórios gerenciais:
+  - Solicitações por período
+  - Solicitações por autoescola
+  - Tempo médio de análise
+  - Quantidade de aprovações, reprovações e pendências
+- Exportação de relatórios em PDF e Excel
+- Acesso completo aos logs e histórico de auditoria
+
+---
+
+### CHAT EM TEMPO REAL (POR SOLICITAÇÃO)
+- Chat individual vinculado a cada solicitação
+- Comunicação instantânea entre:
+  - Autoescola ↔ Operador
+- Histórico completo das mensagens
+- Registro do chat para auditoria
+- Notificação de novas mensagens
+- Bloqueio de envio de mensagens após finalização da solicitação (configurável pelo administrador)
+
+---
+
+### REGRAS DE NEGÓCIO
+- Nenhuma solicitação pode ser analisada sem todos os documentos obrigatórios anexados
+- Toda alteração de dados do condutor deve ser conferida e aprovada por um OPERADOR
+- Toda ação deve gerar registro em log (data, hora, usuário e ação)
+- Solicitações reprovadas exigem justificativa obrigatória
+- Solicitações pendentes permitem reenvio de documentos
+- Solicitações aprovadas são marcadas como finalizadas e bloqueadas para edição
+- Administrador possui acesso total ao sistema
+
+---
+
+### REQUISITOS TÉCNICOS
+- Arquitetura MVC ou API REST
+- Backend com controle de permissões por perfil
+- Upload seguro de arquivos
+- Banco de dados relacional
+- Interface web responsiva
+- Validação de dados no frontend e backend
+- Autenticação segura (JWT ou Session)
+- Chat em tempo real (WebSocket ou similar)
+
+---
+
+### EXTRAS (DIFERENCIAIS)
+- Notificação por e-mail a cada mudança de status
+- Linha do tempo da solicitação
+- Dashboard com indicadores
+- Busca avançada
+- Sistema preparado para auditoria e compliance
+- Estrutura preparada para expansão futura
+
+Crie o sistema com código organizado, escalável e bem documentado.
+Inclua estrutura de banco de dados, endpoints da API, regras de permissão e telas principais.
