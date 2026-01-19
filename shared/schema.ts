@@ -237,3 +237,8 @@ export type SolicitationWithDetails = Solicitation & {
   documents: Document[];
   operador?: User | null;
 };
+
+export type ChatMessageWithSender = ChatMessage & {
+  senderName: string;
+  senderRole: string;
+};

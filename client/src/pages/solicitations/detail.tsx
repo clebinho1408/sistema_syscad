@@ -35,10 +35,13 @@ import {
   ClipboardList,
   ZoomIn,
   ZoomOut,
+  Maximize2,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { SolicitationWithDetails, ChatMessage, Document } from "@shared/schema";
+import type { SolicitationWithDetails, ChatMessageWithSender, Document } from "@shared/schema";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 function CopyableField({
   label,
@@ -90,14 +93,18 @@ export default function SolicitationDetailPage() {
   const [requestedDocs, setRequestedDocs] = useState<string[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [copiedFields, setCopiedFields] = useState<Set<string>>(new Set());
+  const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const popupMessagesEndRef = useRef<HTMLDivElement>(null);
+  const previousMessagesCount = useRef<number>(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const { data: solicitation, isLoading } = useQuery<SolicitationWithDetails>({
     queryKey: ["/api/solicitations", params?.id],
     enabled: !!params?.id,
   });
 
-  const { data: messages } = useQuery<ChatMessage[]>({
+  const { data: messages } = useQuery<ChatMessageWithSender[]>({
     queryKey: ["/api/solicitations", params?.id, "messages"],
     enabled: !!params?.id,
     refetchInterval: 3000,
@@ -110,7 +117,23 @@ export default function SolicitationDetailPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    popupMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (messages && messages.length > previousMessagesCount.current) {
+      const lastMessage = messages[messages.length - 1];
+      if (previousMessagesCount.current > 0 && lastMessage.senderId !== user?.id) {
+        try {
+          if (!audioRef.current) {
+            audioRef.current = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleRMHUpr/uXVfLyB3mKWXdT8/iJujgHRJVnNwa2lQNDxbYGBONi0qGR0dGBQQEBgsMTMvLCkfIikoMTM1N0FISkxPVFpe");
+          }
+          audioRef.current.play().catch(() => {});
+        } catch {}
+      }
+    }
+    previousMessagesCount.current = messages?.length || 0;
+  }, [messages, user?.id]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -226,7 +249,7 @@ export default function SolicitationDetailPage() {
   const isPendente = solicitation.status === "pendente_correcao";
 
   const fieldsList = [
-    { id: "nomeCompleto", label: "Nome Completo" },
+    { id: "nomeCompleto", label: "Nome Civil" },
     { id: "nomeSocial", label: "Nome Social" },
     { id: "filiacaoAfetiva1", label: "Filiação Afetiva 1" },
     { id: "filiacaoAfetiva2", label: "Filiação Afetiva 2" },
@@ -235,14 +258,14 @@ export default function SolicitationDetailPage() {
     { id: "nomePai", label: "Nome do Pai" },
     { id: "nacionalidade", label: "Nacionalidade" },
     { id: "tipoDocumento", label: "Tipo de Documento" },
-    { id: "rg", label: "RG / Órgão Emissor" },
-    { id: "dataNascimento", label: "Data de Nascimento" },
+    { id: "rg", label: "Identidade" },
+    { id: "dataNascimento", label: "Data Nascimento" },
     { id: "ufNascimento", label: "UF Nascimento" },
-    { id: "cidadeNascimento", label: "Cidade de Nascimento" },
+    { id: "cidadeNascimento", label: "Local Nascimento" },
     { id: "endereco", label: "Endereço" },
-    { id: "telefone1", label: "Telefone 1" },
+    { id: "telefone1", label: "Telefone" },
     { id: "dddCelular", label: "DDD Telefone Celular" },
-    { id: "telefone2", label: "Telefone 2" },
+    { id: "telefone2", label: "Telefone Celular" },
     { id: "email", label: "E-mail" },
   ];
 
@@ -322,7 +345,7 @@ export default function SolicitationDetailPage() {
                         <h4 className="font-medium mb-3 text-sm text-muted-foreground">Dados Pessoais</h4>
                         <div className="grid gap-3 md:grid-cols-2">
                           <div className="md:col-span-2">
-                            <CopyableField label="Nome Completo" value={solicitation.conductor.nomeCompleto} fieldName="nomeCompleto" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                            <CopyableField label="Nome Civil" value={solicitation.conductor.nomeCompleto} fieldName="nomeCompleto" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
                           <div className="md:col-span-2">
                             <CopyableField label="Nome da Mãe" value={solicitation.conductor.nomeMae} fieldName="nomeMae" copiedFields={copiedFields} onCopy={copyToClipboard} />
@@ -331,8 +354,8 @@ export default function SolicitationDetailPage() {
                             <CopyableField label="Nome do Pai" value={solicitation.conductor.nomePai || "-"} fieldName="nomePai" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
                           <CopyableField label="Nacionalidade" value={solicitation.conductor.nacionalidade} fieldName="nacionalidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Data de Nascimento" value={format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Cidade de Nascimento" value={solicitation.conductor.cidadeNascimento} fieldName="cidadeNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Data Nascimento" value={format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Local Nascimento" value={solicitation.conductor.cidadeNascimento} fieldName="cidadeNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="UF Nascimento" value={solicitation.conductor.ufNascimento} fieldName="ufNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="RG" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Órgão Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
@@ -356,8 +379,8 @@ export default function SolicitationDetailPage() {
                       <div>
                         <h4 className="font-medium mb-3 text-sm text-muted-foreground">Contato</h4>
                         <div className="grid gap-3 md:grid-cols-2">
-                          <CopyableField label="Telefone 1" value={solicitation.conductor.telefone1} fieldName="telefone1" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Telefone 2" value={solicitation.conductor.telefone2 || "-"} fieldName="telefone2" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Telefone" value={solicitation.conductor.telefone1} fieldName="telefone1" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Telefone Celular" value={solicitation.conductor.telefone2 || "-"} fieldName="telefone2" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="E-mail" value={solicitation.conductor.email} fieldName="email" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         </div>
                       </div>
@@ -375,7 +398,7 @@ export default function SolicitationDetailPage() {
                 <p className="font-medium" data-testid="text-cpf">{solicitation.conductor.cpf}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Nome Completo</p>
+                <p className="text-sm text-muted-foreground">Nome Civil</p>
                 <p className="font-medium">{solicitation.conductor.nomeCompleto}</p>
               </div>
               <div>
@@ -391,11 +414,11 @@ export default function SolicitationDetailPage() {
                 <p className="font-medium">{solicitation.conductor.nacionalidade}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Data de Nascimento</p>
+                <p className="text-sm text-muted-foreground">Data Nascimento</p>
                 <p className="font-medium">{format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Naturalidade</p>
+                <p className="text-sm text-muted-foreground">Local Nascimento</p>
                 <p className="font-medium">{solicitation.conductor.cidadeNascimento}/{solicitation.conductor.ufNascimento}</p>
               </div>
               <div>
@@ -437,11 +460,11 @@ export default function SolicitationDetailPage() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
               <div>
-                <p className="text-sm text-muted-foreground">Telefone 1</p>
+                <p className="text-sm text-muted-foreground">Telefone</p>
                 <p className="font-medium">{solicitation.conductor.telefone1}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Telefone 2</p>
+                <p className="text-sm text-muted-foreground">Telefone Celular</p>
                 <p className="font-medium">{solicitation.conductor.telefone2 || "-"}</p>
               </div>
               <div>
@@ -682,9 +705,19 @@ export default function SolicitationDetailPage() {
 
           <Card className="flex flex-col h-[500px]">
             <CardHeader className="flex-shrink-0">
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Chat Interno
+              <CardTitle className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Chat Interno
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setIsChatPopupOpen(true)}
+                  data-testid="button-open-chat-popup"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
@@ -693,6 +726,9 @@ export default function SolicitationDetailPage() {
                   key={msg.id} 
                   className={`flex flex-col ${msg.senderId === user?.id ? "items-end" : "items-start"}`}
                 >
+                  <p className={`text-[10px] mb-1 ${msg.senderId === user?.id ? "text-right" : "text-left"} text-muted-foreground`}>
+                    {msg.senderName} - {format(new Date(msg.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                  </p>
                   <div className={`max-w-[85%] p-3 rounded-lg ${
                     msg.senderId === user?.id 
                       ? "bg-primary text-primary-foreground rounded-tr-none" 
@@ -701,9 +737,6 @@ export default function SolicitationDetailPage() {
                         : "bg-muted rounded-tl-none"
                   }`}>
                     <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                    <p className="text-[10px] mt-1 opacity-70">
-                      {format(new Date(msg.createdAt), "HH:mm", { locale: ptBR })}
-                    </p>
                   </div>
                 </div>
               ))}
@@ -724,6 +757,53 @@ export default function SolicitationDetailPage() {
               </form>
             </CardFooter>
           </Card>
+
+          <Dialog open={isChatPopupOpen} onOpenChange={setIsChatPopupOpen}>
+            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
+              <DialogHeader className="p-6 pb-0">
+                <DialogTitle className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Chat Interno
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto space-y-4 p-6 min-h-0">
+                {messages?.map((msg) => (
+                  <div 
+                    key={msg.id} 
+                    className={`flex flex-col ${msg.senderId === user?.id ? "items-end" : "items-start"}`}
+                  >
+                    <p className={`text-xs mb-1 ${msg.senderId === user?.id ? "text-right" : "text-left"} text-muted-foreground`}>
+                      {msg.senderName} - {format(new Date(msg.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                    </p>
+                    <div className={`max-w-[70%] p-4 rounded-lg ${
+                      msg.senderId === user?.id 
+                        ? "bg-primary text-primary-foreground rounded-tr-none" 
+                        : msg.message.startsWith("[SISTEMA]") || msg.message.startsWith("[PEDIDO DE ACESSO]")
+                          ? "bg-muted text-muted-foreground w-full text-center"
+                          : "bg-muted rounded-tl-none"
+                    }`}>
+                      <p className="whitespace-pre-wrap">{msg.message}</p>
+                    </div>
+                  </div>
+                ))}
+                <div ref={popupMessagesEndRef} />
+              </div>
+              <div className="p-6 pt-0">
+                <form onSubmit={handleSendMessage} className="flex w-full gap-2">
+                  <Input 
+                    placeholder="Digite uma mensagem..." 
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    disabled={isFinalized}
+                    data-testid="input-chat-message-popup"
+                  />
+                  <Button type="submit" size="icon" disabled={isFinalized || sendMessageMutation.isPending} data-testid="button-send-message-popup">
+                    {sendMessageMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </Button>
+                </form>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {isAutoescola && !isFinalized && (
             <div className="space-y-3">

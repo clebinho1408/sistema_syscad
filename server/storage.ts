@@ -4,7 +4,7 @@ import {
   type Conductor, type InsertConductor, type Solicitation, type InsertSolicitation,
   type Document, type InsertDocument, type ChatMessage, type InsertChatMessage,
   type AuditLog, type InsertAuditLog, type RequiredDocument, type InsertRequiredDocument,
-  type SolicitationWithDetails
+  type SolicitationWithDetails, type ChatMessageWithSender
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, sql } from "drizzle-orm";
@@ -37,7 +37,7 @@ export interface IStorage {
   createDocument(data: InsertDocument): Promise<Document>;
   updateDocument(id: string, data: Partial<InsertDocument>): Promise<Document | undefined>;
 
-  getChatMessages(solicitationId: string): Promise<ChatMessage[]>;
+  getChatMessages(solicitationId: string): Promise<ChatMessageWithSender[]>;
   createChatMessage(data: InsertChatMessage): Promise<ChatMessage>;
 
   createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
@@ -207,8 +207,27 @@ export class DatabaseStorage implements IStorage {
     return doc || undefined;
   }
 
-  async getChatMessages(solicitationId: string): Promise<ChatMessage[]> {
-    return db.select().from(chatMessages).where(eq(chatMessages.solicitationId, solicitationId)).orderBy(chatMessages.createdAt);
+  async getChatMessages(solicitationId: string): Promise<ChatMessageWithSender[]> {
+    const messages = await db
+      .select({
+        id: chatMessages.id,
+        solicitationId: chatMessages.solicitationId,
+        senderId: chatMessages.senderId,
+        message: chatMessages.message,
+        createdAt: chatMessages.createdAt,
+        senderName: users.name,
+        senderRole: users.role,
+      })
+      .from(chatMessages)
+      .leftJoin(users, eq(chatMessages.senderId, users.id))
+      .where(eq(chatMessages.solicitationId, solicitationId))
+      .orderBy(chatMessages.createdAt);
+    
+    return messages.map(msg => ({
+      ...msg,
+      senderName: msg.senderName || 'Usuário',
+      senderRole: msg.senderRole || 'autoescola',
+    }));
   }
 
   async createChatMessage(data: InsertChatMessage): Promise<ChatMessage> {
@@ -293,7 +312,7 @@ export class DatabaseStorage implements IStorage {
       regularizacao: allSolicitations.filter(s => s.type === "regularizacao").length,
     };
 
-    const schoolIds = [...new Set(allSolicitations.map(s => s.drivingSchoolId))];
+    const schoolIds = Array.from(new Set(allSolicitations.map(s => s.drivingSchoolId)));
     const bySchool: { name: string; count: number }[] = [];
     for (const schoolId of schoolIds) {
       const school = await this.getDrivingSchool(schoolId);
