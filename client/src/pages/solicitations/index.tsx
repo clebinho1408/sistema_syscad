@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/status-badge";
 import { Link } from "wouter";
-import { FileText, Plus, Search, Filter, Calendar, MessageSquare } from "lucide-react";
+import { FileText, Plus, Search, Filter, Calendar } from "lucide-react";
 import type { SolicitationWithDetails } from "@shared/schema";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -158,14 +158,13 @@ export default function SolicitationsPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                    <div className="flex items-center gap-3 flex-wrap justify-end">
                       {getUnreadCount(solicitation.id) > 0 && (
-                        <div className="relative" data-testid={`chat-unread-${solicitation.id}`}>
-                          <MessageSquare className="w-5 h-5 text-primary" />
-                          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                            {getUnreadCount(solicitation.id) > 99 ? "99+" : getUnreadCount(solicitation.id)}
-                          </span>
-                        </div>
+                        <div 
+                          className="w-4 h-4 bg-red-500 rounded-full flex-shrink-0" 
+                          title={`${getUnreadCount(solicitation.id)} mensagem(ns) não lida(s)`}
+                          data-testid={`chat-unread-${solicitation.id}`}
+                        />
                       )}
                       <TypeBadge type={solicitation.type as any} />
                       <StatusBadge status={solicitation.status as any} />
