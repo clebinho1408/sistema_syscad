@@ -94,8 +94,8 @@ export default function SolicitationDetailPage() {
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [copiedFields, setCopiedFields] = useState<Set<string>>(new Set());
   const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const popupMessagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const previousMessagesCount = useRef<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -116,8 +116,12 @@ export default function SolicitationDetailPage() {
   });
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    popupMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+    if (popupChatContainerRef.current) {
+      popupChatContainerRef.current.scrollTop = popupChatContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -334,7 +338,7 @@ export default function SolicitationDetailPage() {
                   data-testid="button-approve"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Aprovar Solicitação
+                  Cadastro Finalizado
                 </Button>
 
                 <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
@@ -382,44 +386,8 @@ export default function SolicitationDetailPage() {
                   data-testid="button-reject"
                 >
                   <XCircle className="w-4 h-4 mr-2" />
-                  Reprovar Solicitação
+                  Aguardando Penalidade
                 </Button>
-              </div>
-
-              <div className="mt-4 pt-4 border-t flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Controle de Acesso:</span>
-                  {solicitation.accessGranted ? (
-                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">Acesso Concedido</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-muted-foreground">Acesso Bloqueado</Badge>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {solicitation.accessGranted ? (
-                    <Button 
-                      variant="secondary" 
-                      size="sm"
-                      onClick={handleRevokeAccess}
-                      disabled={updateStatusMutation.isPending}
-                      data-testid="button-revoke-access"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Revogar Acesso
-                    </Button>
-                  ) : (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleGrantAccess}
-                      disabled={updateStatusMutation.isPending}
-                      data-testid="button-grant-access"
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Conceder Acesso
-                    </Button>
-                  )}
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -737,7 +705,7 @@ export default function SolicitationDetailPage() {
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
+            <CardContent ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
               {messages?.map((msg) => (
                 <div 
                   key={msg.id} 
@@ -757,7 +725,6 @@ export default function SolicitationDetailPage() {
                   </div>
                 </div>
               ))}
-              <div ref={messagesEndRef} />
             </CardContent>
             <CardFooter className="p-4 pt-0 flex-shrink-0">
               <form onSubmit={handleSendMessage} className="flex w-full gap-2">
@@ -783,7 +750,7 @@ export default function SolicitationDetailPage() {
                   Chat Interno
                 </DialogTitle>
               </DialogHeader>
-              <div className="flex-1 overflow-y-auto space-y-4 p-6 min-h-0">
+              <div ref={popupChatContainerRef} className="flex-1 overflow-y-auto space-y-4 p-6 min-h-0">
                 {messages?.map((msg) => (
                   <div 
                     key={msg.id} 
@@ -803,7 +770,6 @@ export default function SolicitationDetailPage() {
                     </div>
                   </div>
                 ))}
-                <div ref={popupMessagesEndRef} />
               </div>
               <div className="p-6 pt-0">
                 <form onSubmit={handleSendMessage} className="flex w-full gap-2">
