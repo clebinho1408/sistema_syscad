@@ -85,6 +85,9 @@ export default function SolicitationDetailPage() {
   const [externalObservation, setExternalObservation] = useState("");
   const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false);
+  const [isAccessRequestOpen, setIsAccessRequestOpen] = useState(false);
+  const [requestedFields, setRequestedFields] = useState<string[]>([]);
+  const [requestedDocs, setRequestedDocs] = useState<string[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [copiedFields, setCopiedFields] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -143,6 +146,20 @@ export default function SolicitationDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "documents"] });
+    },
+  });
+
+  const requestAccessMutation = useMutation({
+    mutationFn: async (data: { fields: string[]; documents: string[] }) => {
+      return apiRequest("POST", `/api/solicitations/${params?.id}/request-access`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id] });
+      toast({ title: "Pedido de acesso enviado!" });
+      setIsAccessRequestOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao enviar pedido", description: error.message, variant: "destructive" });
     },
   });
 
@@ -205,6 +222,42 @@ export default function SolicitationDetailPage() {
 
   const isFinalized = solicitation.status === "aprovada" || solicitation.status === "reprovada";
   const canEdit = user?.role === "operador" || user?.role === "admin";
+  const isAutoescola = user?.role === "autoescola";
+  const isPendente = solicitation.status === "pendente_correcao";
+
+  const fieldsList = [
+    { id: "nomeCompleto", label: "Nome Completo" },
+    { id: "nomeMae", label: "Nome da Mãe" },
+    { id: "nomePai", label: "Nome do Pai" },
+    { id: "rg", label: "RG" },
+    { id: "cpf", label: "CPF" },
+    { id: "endereco", label: "Endereço" },
+    { id: "contato", label: "Contato" },
+  ];
+
+  const docsList = [
+    { id: "documento_identificacao", label: "Documento de Identificação" },
+    { id: "comprovante_residencia", label: "Comprovante de Residência" },
+    { id: "outros", label: "Outros Documentos" },
+  ];
+
+  const handleGrantAccess = () => {
+    updateStatusMutation.mutate({ 
+      status: solicitation.status, 
+      accessGranted: true,
+      sendChatNotification: true,
+      observacoesExternas: "Acesso para edição concedido." 
+    });
+  };
+
+  const handleRevokeAccess = () => {
+    updateStatusMutation.mutate({ 
+      status: solicitation.status, 
+      accessGranted: false,
+      sendChatNotification: true,
+      observacoesExternas: "Acesso para edição revogado." 
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -461,6 +514,143 @@ export default function SolicitationDetailPage() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {isAutoescola && isPendente && !solicitation.accessGranted && (
+            <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/30">
+              <CardHeader>
+                <CardTitle className="text-blue-700 dark:text-blue-400 text-lg flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  Solicitar Acesso para Edição
+                </CardTitle>
+                <CardDescription>
+                  Se você precisa corrigir algum campo ou anexo, solicite acesso ao DETRAN.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog open={isAccessRequestOpen} onOpenChange={setIsAccessRequestOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full border-blue-300 text-blue-700 hover:bg-blue-100">
+                      Escolher Campos e Anexos
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>O que deseja corrigir?</DialogTitle>
+                      <DialogDescription>
+                        Selecione os itens que precisam de ajuste.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Campos de Dados</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {fieldsList.map(field => (
+                            <div key={field.id} className="flex items-center space-x-2">
+                              <Checkbox 
+                                id={`field-${field.id}`} 
+                                checked={requestedFields.includes(field.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) setRequestedFields([...requestedFields, field.id]);
+                                  else setRequestedFields(requestedFields.filter(f => f !== field.id));
+                                }}
+                              />
+                              <label htmlFor={`field-${field.id}`} className="text-xs">{field.label}</label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <Separator />
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Anexos/Documentos</h4>
+                        <div className="space-y-2">
+                          {docsList.map(doc => (
+                            <div key={doc.id} className="flex items-center space-x-2">
+                              <Checkbox 
+                                id={`doc-${doc.id}`}
+                                checked={requestedDocs.includes(doc.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) setRequestedDocs([...requestedDocs, doc.id]);
+                                  else setRequestedDocs(requestedDocs.filter(d => d !== doc.id));
+                                }}
+                              />
+                              <label htmlFor={`doc-${doc.id}`} className="text-xs">{doc.label}</label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAccessRequestOpen(false)}>Cancelar</Button>
+                      <Button 
+                        onClick={() => requestAccessMutation.mutate({ fields: requestedFields, documents: requestedDocs })}
+                        disabled={requestAccessMutation.isPending || (requestedFields.length === 0 && requestedDocs.length === 0)}
+                      >
+                        {requestAccessMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Solicitar Acesso
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+          )}
+
+          {canEdit && isPendente && solicitation.accessRequestedFields && solicitation.accessRequestedFields.length > 0 && (
+            <Card className="border-orange-200 dark:border-orange-800 bg-orange-50/30">
+              <CardHeader>
+                <CardTitle className="text-orange-700 dark:text-orange-400 text-lg flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  Pedido de Acesso Pendente
+                </CardTitle>
+                <CardDescription>
+                  A autoescola solicitou acesso para corrigir os seguintes itens:
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-sm space-y-2">
+                  {solicitation.accessRequestedFields.length > 0 && (
+                    <p><strong>Campos:</strong> {solicitation.accessRequestedFields.map(id => fieldsList.find(f => f.id === id)?.label).join(", ")}</p>
+                  )}
+                  {solicitation.accessRequestedDocuments && solicitation.accessRequestedDocuments.length > 0 && (
+                    <p><strong>Anexos:</strong> {solicitation.accessRequestedDocuments.map(id => docsList.find(d => d.id === id)?.label).join(", ")}</p>
+                  )}
+                </div>
+                {!solicitation.accessGranted ? (
+                  <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleGrantAccess} disabled={updateStatusMutation.isPending}>
+                    {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Aprovar Pedido de Acesso
+                  </Button>
+                ) : (
+                  <Button className="w-full" variant="outline" onClick={handleRevokeAccess} disabled={updateStatusMutation.isPending}>
+                    {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Revogar Acesso Concedido
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {isAutoescola && solicitation.accessGranted && (
+            <Card className="border-green-200 dark:border-green-800 bg-green-50/30">
+              <CardHeader>
+                <CardTitle className="text-green-700 dark:text-green-400 text-lg flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5" />
+                  Acesso para Edição Liberado
+                </CardTitle>
+                <CardDescription>
+                  Você pode editar os campos solicitados e reenviar os documentos.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm mb-4">
+                  <strong>Itens liberados:</strong> {[...(solicitation.accessRequestedFields || []), ...(solicitation.accessRequestedDocuments || [])].join(", ")}
+                </p>
+                <Button variant="outline" className="w-full border-green-300 text-green-700 hover:bg-green-100">
+                  Iniciar Correções
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {solicitation.observacoesExternas && (
             <Card className="border-amber-200 dark:border-amber-800">

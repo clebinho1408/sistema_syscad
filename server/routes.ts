@@ -280,7 +280,7 @@ export async function registerRoutes(
 
   app.patch("/api/solicitations/:id/status", requireAuth, requireRole("operador", "admin"), async (req, res) => {
     try {
-      const { status, justificativa, observacoesExternas, sendChatNotification } = req.body;
+      const { status, justificativa, observacoesExternas, sendChatNotification, accessGranted } = req.body;
       
       const solicitation = await storage.getSolicitation(req.params.id);
       if (!solicitation) {
@@ -290,6 +290,7 @@ export async function registerRoutes(
       const updateData: any = { status, operadorId: req.user!.id };
       if (justificativa) updateData.justificativaReprovacao = justificativa;
       if (observacoesExternas) updateData.observacoesExternas = observacoesExternas;
+      if (accessGranted !== undefined) updateData.accessGranted = accessGranted;
 
       const updated = await storage.updateSolicitation(req.params.id, updateData);
 
@@ -366,6 +367,27 @@ export async function registerRoutes(
       broadcastToSolicitation(req.params.id, { type: "new_message", message: chatMessage });
 
       res.status(201).json(chatMessage);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/solicitations/:id/request-access", requireAuth, requireRole("autoescola"), async (req, res) => {
+    try {
+      const { fields, documents } = req.body;
+      const updated = await storage.updateSolicitation(req.params.id, {
+        accessRequestedFields: fields,
+        accessRequestedDocuments: documents,
+        accessGranted: false
+      });
+      
+      await storage.createChatMessage({
+        solicitationId: req.params.id,
+        senderId: req.user!.id,
+        message: `[PEDIDO DE ACESSO] A autoescola solicitou acesso para corrigir campos (${fields.join(", ")}) e anexos (${documents.join(", ")})`,
+      });
+
+      res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

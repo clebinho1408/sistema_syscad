@@ -131,6 +131,8 @@ export class DatabaseStorage implements IStorage {
       conductor: conductor!,
       documents: docs,
       operador,
+      accessRequestedFields: solicitation.accessRequestedFields || [],
+      accessRequestedDocuments: solicitation.accessRequestedDocuments || [],
     };
   }
 
@@ -160,6 +162,8 @@ export class DatabaseStorage implements IStorage {
         conductor: conductor!,
         documents: docs,
         operador,
+        accessRequestedFields: s.accessRequestedFields || [],
+        accessRequestedDocuments: s.accessRequestedDocuments || [],
       });
     }
 

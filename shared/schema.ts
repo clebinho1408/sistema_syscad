@@ -72,6 +72,9 @@ export const solicitations = pgTable("solicitations", {
   observacoesInternas: text("observacoes_internas"),
   observacoesExternas: text("observacoes_externas"),
   justificativaReprovacao: text("justificativa_reprovacao"),
+  accessRequestedFields: text("access_requested_fields").array(),
+  accessRequestedDocuments: text("access_requested_documents").array(),
+  accessGranted: boolean("access_granted").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
