@@ -61,6 +61,12 @@ const UF_OPTIONS = [
   "RS", "RO", "RR", "SC", "SP", "SE", "TO"
 ];
 
+const UF_NASCIMENTO_OPTIONS = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO", "ESTRANGEIRO"
+];
+
 const TIPO_LOGRADOURO_OPTIONS = [
   "RUA", "AVENIDA", "ALAMEDA", "TRAVESSA", "PRACA", "RODOVIA", "ESTRADA", "LARGO", "VIA", "OUTRO"
 ];
@@ -68,19 +74,65 @@ const TIPO_LOGRADOURO_OPTIONS = [
 const SEXO_OPTIONS = ["MASCULINO", "FEMININO"];
 const TIPO_DOCUMENTO_OPTIONS = ["RG", "CNH", "PASSAPORTE", "CTPS", "RNE"];
 
+const NACIONALIDADE_OPTIONS = [
+  "BRASILEIRO",
+  "BRASILEIRO NASCIDO NO EXTERIOR",
+  "BRASILEIRO NATURALIZADO",
+  "ESTRANGEIRO"
+];
+
+const IDENTIDADE_OPTIONS = [
+  "CARTEIRA DE IDENTIDADE",
+  "CARTEIRA DE TRABALHO",
+  "CARTEIRA DE RESERVISTA",
+  "PASSAPORTE"
+];
+
+function formatCpf(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+function validateCpf(cpf: string): boolean {
+  const digits = cpf.replace(/\D/g, "");
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+  
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(digits[i]) * (10 - i);
+  }
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(digits[9])) return false;
+  
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(digits[i]) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(digits[10])) return false;
+  
+  return true;
+}
+
 const solicitationSchema = z.object({
   type: z.enum(["novo_cadastro", "alteracao_dados", "atualizacao", "regularizacao"]),
-  cpf: z.string().min(11, "CPF inválido").transform(toUpperWithoutAccents),
+  cpf: z.string().min(14, "CPF inválido").refine((val) => validateCpf(val), "CPF inválido"),
   nomeCompleto: z.string().min(2, "Nome é obrigatório").transform(toUpperWithoutAccents),
   nomeSocial: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   nomeMae: z.string().min(2, "Nome da mãe é obrigatório").transform(toUpperWithoutAccents),
   nomePai: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   filiacaoAfetiva1: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   filiacaoAfetiva2: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
-  sexo: z.string().optional(),
-  nacionalidade: z.string().min(2, "Nacionalidade é obrigatória").transform(toUpperWithoutAccents),
-  tipoDocumento: z.string().optional(),
-  rg: z.string().min(5, "Identidade é obrigatória").transform(toUpperWithoutAccents),
+  sexo: z.string().min(1, "Sexo é obrigatório"),
+  nacionalidade: z.string().min(2, "Nacionalidade é obrigatória"),
+  tipoDocumento: z.string().min(1, "Tipo de documento é obrigatório"),
+  rg: z.string().min(1, "Identidade é obrigatória"),
   orgaoEmissor: z.string().min(2, "Órgão emissor é obrigatório").transform(toUpperWithoutAccents),
   ufEmissor: z.string().min(2, "UF é obrigatória"),
   dataNascimento: z.string().min(8, "Data nascimento é obrigatória").refine((val) => {
@@ -102,9 +154,9 @@ const solicitationSchema = z.object({
   bairro: z.string().min(2, "Bairro é obrigatório").transform(toUpperWithoutAccents),
   uf: z.string().min(2, "UF é obrigatória"),
   cidade: z.string().min(2, "Cidade é obrigatória").transform(toUpperWithoutAccents),
-  telefone1: z.string().min(10, "Telefone é obrigatório").transform(toUpperWithoutAccents),
-  dddCelular: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
-  telefone2: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
+  telefone1: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
+  dddCelular: z.string().min(2, "DDD Telefone Celular é obrigatório").transform(toUpperWithoutAccents),
+  telefone2: z.string().min(8, "Telefone Celular é obrigatório").transform(toUpperWithoutAccents),
   email: z.string().optional(),
   naoPossuiEmail: z.boolean().optional(),
   naoQuerInformarEmail: z.boolean().optional(),
@@ -149,7 +201,7 @@ export default function NewSolicitationPage() {
       filiacaoAfetiva1: "",
       filiacaoAfetiva2: "",
       sexo: "",
-      nacionalidade: "BRASILEIRA",
+      nacionalidade: "",
       tipoDocumento: "",
       rg: "",
       orgaoEmissor: "",
@@ -360,9 +412,13 @@ export default function NewSolicitationPage() {
                     <FormLabel>CPF *</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <UppercaseInput 
+                        <Input 
                           placeholder="000.000.000-00" 
-                          {...field} 
+                          value={field.value}
+                          onChange={(e) => {
+                            const formatted = formatCpf(e.target.value);
+                            field.onChange(formatted);
+                          }}
                           data-testid="input-cpf"
                           onBlur={(e) => {
                             field.onBlur();
@@ -462,7 +518,7 @@ export default function NewSolicitationPage() {
                 name="sexo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Sexo</FormLabel>
+                    <FormLabel>Sexo *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-sexo">
@@ -485,9 +541,18 @@ export default function NewSolicitationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nacionalidade *</FormLabel>
-                    <FormControl>
-                      <UppercaseInput placeholder="BRASILEIRA" {...field} data-testid="input-nacionalidade" />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-nacionalidade">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {NACIONALIDADE_OPTIONS.map((nac) => (
+                          <SelectItem key={nac} value={nac}>{nac}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -497,7 +562,7 @@ export default function NewSolicitationPage() {
                 name="tipoDocumento"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tipo de Documento</FormLabel>
+                    <FormLabel>Tipo de Documento *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-tipo-documento">
@@ -520,9 +585,18 @@ export default function NewSolicitationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Identidade *</FormLabel>
-                    <FormControl>
-                      <UppercaseInput placeholder="NUMERO DA IDENTIDADE" {...field} data-testid="input-rg" />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-identidade">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {IDENTIDADE_OPTIONS.map((id) => (
+                          <SelectItem key={id} value={id}>{id}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -588,7 +662,7 @@ export default function NewSolicitationPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {UF_OPTIONS.map((uf) => (
+                        {UF_NASCIMENTO_OPTIONS.map((uf) => (
                           <SelectItem key={uf} value={uf}>{uf}</SelectItem>
                         ))}
                       </SelectContent>
@@ -768,9 +842,9 @@ export default function NewSolicitationPage() {
                 name="telefone1"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone *</FormLabel>
+                    <FormLabel>Telefone</FormLabel>
                     <FormControl>
-                      <UppercaseInput placeholder="(00) 00000-0000" {...field} data-testid="input-telefone1" />
+                      <UppercaseInput placeholder="(00) 0000-0000" {...field} data-testid="input-telefone1" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -781,7 +855,7 @@ export default function NewSolicitationPage() {
                 name="dddCelular"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>DDD Telefone Celular</FormLabel>
+                    <FormLabel>DDD Telefone Celular *</FormLabel>
                     <FormControl>
                       <UppercaseInput placeholder="00" {...field} data-testid="input-ddd-celular" maxLength={2} />
                     </FormControl>
@@ -794,9 +868,9 @@ export default function NewSolicitationPage() {
                 name="telefone2"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone Celular</FormLabel>
+                    <FormLabel>Telefone Celular *</FormLabel>
                     <FormControl>
-                      <UppercaseInput placeholder="(00) 00000-0000" {...field} data-testid="input-telefone2" />
+                      <UppercaseInput placeholder="00000-0000" {...field} data-testid="input-telefone2" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
