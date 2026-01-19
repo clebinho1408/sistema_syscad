@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -123,7 +123,7 @@ export default function SolicitationDetailPage() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async (data: { status: string; justificativa?: string; observacoesExternas?: string; sendChatNotification?: boolean }) => {
+    mutationFn: async (data: { status: string; justificativa?: string; observacoesExternas?: string; sendChatNotification?: boolean; accessGranted?: boolean }) => {
       return apiRequest("PATCH", `/api/solicitations/${params?.id}/status`, data);
     },
     onSuccess: () => {
@@ -708,7 +708,7 @@ export default function SolicitationDetailPage() {
                   </Button>
                 )}
                 
-                {(solicitation.accessRequestedFields?.length > 0 || solicitation.accessRequestedDocuments?.length > 0) && (
+                {(solicitation.accessRequestedFields?.length ?? 0) > 0 || (solicitation.accessRequestedDocuments?.length ?? 0) > 0 ? (
                   <div className="mt-4 p-3 bg-muted rounded-lg border border-primary/20">
                     <p className="text-sm font-bold flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-primary" />
@@ -742,7 +742,7 @@ export default function SolicitationDetailPage() {
                       Aprovar Acesso solicitado
                     </Button>
                   </div>
-                )}
+                ) : null}
               </CardContent>
             </Card>
           )}
