@@ -86,7 +86,6 @@ export default function SolicitationDetailPage() {
   const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
-  const [zoom, setZoom] = useState(1);
   const [copiedFields, setCopiedFields] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -411,7 +410,6 @@ export default function SolicitationDetailPage() {
                       size="icon" 
                       onClick={() => {
                         setSelectedDoc(doc);
-                        setZoom(1);
                       }}
                       data-testid={`button-view-${doc.id}`}
                     >
@@ -438,29 +436,18 @@ export default function SolicitationDetailPage() {
                   <DialogTitle>Detalhes do Documento</DialogTitle>
                   <DialogDescription>{selectedDoc?.fileName}</DialogDescription>
                 </div>
-                <div className="flex items-center gap-2 mr-6">
-                  <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.max(0.5, prev - 0.25))}>
-                    <ZoomOut className="w-4 h-4" />
-                  </Button>
-                  <span className="text-sm font-medium w-12 text-center">{Math.round(zoom * 100)}%</span>
-                  <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.min(3, prev + 0.25))}>
-                    <ZoomIn className="w-4 h-4" />
-                  </Button>
-                </div>
               </DialogHeader>
               <div className="flex-1 overflow-auto bg-muted/30 flex items-center justify-center p-4">
                 {selectedDoc?.fileType.startsWith('image/') ? (
                   <img 
                     src={selectedDoc.fileData} 
                     alt={selectedDoc.fileName}
-                    style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s' }}
-                    className="max-w-none shadow-lg origin-center"
+                    className="max-w-full h-auto shadow-lg"
                   />
                 ) : selectedDoc?.fileType === 'application/pdf' ? (
                   <iframe 
                     src={selectedDoc.fileData} 
-                    className="w-full h-full"
-                    style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s', transformOrigin: 'top center' }}
+                    className="w-full h-full border-0"
                   />
                 ) : (
                   <div className="text-center">
