@@ -181,7 +181,10 @@ export default function NewSolicitationPage() {
       const data = await response.json();
       
       if (!data.erro) {
-        form.setValue("logradouro", toUpperWithoutAccents(data.logradouro || ""));
+        // Remove common street type prefixes (Rua, Avenida, etc) from the logradouro
+        const streetName = data.logradouro ? data.logradouro.replace(/^(RUA|AVENIDA|AV|ALAMEDA|AL|TRAVESSA|TRV|PRACA|PRC|RODOVIA|ROD|ESTRADA|EST|LARGO|LRG|VIA)\s+/i, "") : "";
+        
+        form.setValue("logradouro", toUpperWithoutAccents(streetName));
         form.setValue("bairro", toUpperWithoutAccents(data.bairro || ""));
         form.setValue("cidade", toUpperWithoutAccents(data.localidade || ""));
         form.setValue("uf", data.uf || "");
