@@ -768,7 +768,28 @@ export default function SolicitationDetailPage() {
                                       setRequestedDocs(prev => [...prev, "documento_identificacao"]);
                                     }
                                   } else {
-                                    setRequestedFields(requestedFields.filter(f => f !== field.id));
+                                    const newFields = requestedFields.filter(f => f !== field.id);
+                                    setRequestedFields(newFields);
+                                    
+                                    // Auto-uncheck documents logic
+                                    let newDocs = [...requestedDocs];
+                                    
+                                    // If no fields are checked, uncheck Renach
+                                    if (newFields.length === 0) {
+                                      newDocs = newDocs.filter(d => d !== "renach_assinado");
+                                    }
+                                    
+                                    // If Endereço is unchecked, uncheck Comprovante de Residência
+                                    if (field.id === "endereco") {
+                                      newDocs = newDocs.filter(d => d !== "comprovante_residencia");
+                                    }
+                                    
+                                    // If RG is unchecked, uncheck Documento de Identificação
+                                    if (field.id === "rg") {
+                                      newDocs = newDocs.filter(d => d !== "documento_identificacao");
+                                    }
+                                    
+                                    setRequestedDocs(newDocs);
                                   }
                                 }}
                               />
@@ -783,16 +804,14 @@ export default function SolicitationDetailPage() {
                         <h4 className="text-sm font-semibold">Anexos/Documentos</h4>
                         <div className="space-y-2">
                           {docsList.map((doc) => (
-                            <div key={doc.id} className="flex items-center space-x-2 border rounded-md px-3 py-2">
+                            <div key={doc.id} className="flex items-center space-x-2 border rounded-md px-3 py-2 opacity-80 bg-muted/30">
                               <Checkbox 
                                 id={`doc-${doc.id}`}
                                 checked={requestedDocs.includes(doc.id)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) setRequestedDocs([...requestedDocs, doc.id]);
-                                  else setRequestedDocs(requestedDocs.filter(d => d !== doc.id));
-                                }}
+                                disabled={true}
+                                className="cursor-not-allowed"
                               />
-                              <label htmlFor={`doc-${doc.id}`} className="text-sm leading-none cursor-pointer">
+                              <label htmlFor={`doc-${doc.id}`} className="text-sm leading-none cursor-not-allowed">
                                 {doc.label}
                               </label>
                             </div>
