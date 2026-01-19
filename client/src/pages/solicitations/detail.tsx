@@ -229,11 +229,77 @@ export default function SolicitationDetailPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
                 <User className="w-5 h-5" />
                 Dados do Candidato/Condutor
               </CardTitle>
+              {canEdit && (
+                <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" data-testid="button-open-full-data">
+                      <ClipboardList className="w-4 h-4 mr-2" />
+                      Abrir Dados Completos
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Dados Completos do Candidato</DialogTitle>
+                      <DialogDescription>
+                        Clique no icone ao lado de cada campo para copiar
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                      <div>
+                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Dados Pessoais</h4>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <div className="md:col-span-2">
+                            <CopyableField label="Nome Completo" value={solicitation.conductor.nomeCompleto} fieldName="nomeCompleto" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          </div>
+                          <div className="md:col-span-2">
+                            <CopyableField label="Nome da Mae" value={solicitation.conductor.nomeMae} fieldName="nomeMae" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          </div>
+                          <div className="md:col-span-2">
+                            <CopyableField label="Nome do Pai" value={solicitation.conductor.nomePai || "-"} fieldName="nomePai" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          </div>
+                          <CopyableField label="Nacionalidade" value={solicitation.conductor.nacionalidade} fieldName="nacionalidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Data de Nascimento" value={solicitation.conductor.dataNascimento} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Cidade de Nascimento" value={solicitation.conductor.cidadeNascimento} fieldName="cidadeNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="UF Nascimento" value={solicitation.conductor.ufNascimento} fieldName="ufNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="RG" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Orgao Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="orgaoEmissorUf" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                        </div>
+                      </div>
+                      <Separator />
+                      <div>
+                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Endereço</h4>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <CopyableField label="CEP" value={solicitation.conductor.cep} fieldName="cep" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Tipo de Logradouro" value={solicitation.conductor.tipoLogradouro} fieldName="tipoLogradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Logradouro" value={solicitation.conductor.logradouro} fieldName="logradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Numero" value={solicitation.conductor.numero} fieldName="numero" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Complemento" value={solicitation.conductor.complemento || "-"} fieldName="complemento" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Bairro" value={solicitation.conductor.bairro} fieldName="bairro" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Cidade" value={solicitation.conductor.cidade} fieldName="cidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="UF" value={solicitation.conductor.uf} fieldName="uf" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                        </div>
+                      </div>
+                      <Separator />
+                      <div>
+                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Contato</h4>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <CopyableField label="Telefone 1" value={solicitation.conductor.telefone1} fieldName="telefone1" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Telefone 2" value={solicitation.conductor.telefone2 || "-"} fieldName="telefone2" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="E-mail" value={solicitation.conductor.email} fieldName="email" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsDataDialogOpen(false)}>Fechar</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
@@ -276,72 +342,11 @@ export default function SolicitationDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
-                Endereco
+                Endereço
               </CardTitle>
-              {canEdit && (
-                <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" data-testid="button-open-full-data">
-                      <ClipboardList className="w-4 h-4 mr-2" />
-                      Abrir Dados Completos
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Dados Completos do Candidato</DialogTitle>
-                      <DialogDescription>
-                        Clique no icone ao lado de cada campo para copiar
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-6 py-4">
-                      <div>
-                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Dados Pessoais</h4>
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <CopyableField label="CPF" value={solicitation.conductor.cpf} fieldName="cpf" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Nome Completo" value={solicitation.conductor.nomeCompleto} fieldName="nomeCompleto" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Nome da Mae" value={solicitation.conductor.nomeMae} fieldName="nomeMae" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Nome do Pai" value={solicitation.conductor.nomePai || "-"} fieldName="nomePai" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Nacionalidade" value={solicitation.conductor.nacionalidade} fieldName="nacionalidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Data de Nascimento" value={solicitation.conductor.dataNascimento} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="RG" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Orgao Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="orgaoEmissorUf" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                        </div>
-                      </div>
-                      <Separator />
-                      <div>
-                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Contato</h4>
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <CopyableField label="Telefone 1" value={solicitation.conductor.telefone1} fieldName="telefone1" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Telefone 2" value={solicitation.conductor.telefone2 || "-"} fieldName="telefone2" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="E-mail" value={solicitation.conductor.email} fieldName="email" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                        </div>
-                      </div>
-                      <Separator />
-                      <div>
-                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Endereco</h4>
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <CopyableField label="Cidade de Nascimento" value={solicitation.conductor.cidadeNascimento} fieldName="cidadeNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="UF Nascimento" value={solicitation.conductor.ufNascimento} fieldName="ufNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="CEP" value={solicitation.conductor.cep} fieldName="cep" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Tipo de Logradouro" value={solicitation.conductor.tipoLogradouro} fieldName="tipoLogradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Logradouro" value={solicitation.conductor.logradouro} fieldName="logradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Numero" value={solicitation.conductor.numero} fieldName="numero" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Complemento" value={solicitation.conductor.complemento || "-"} fieldName="complemento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Bairro" value={solicitation.conductor.bairro} fieldName="bairro" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Cidade" value={solicitation.conductor.cidade} fieldName="cidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="UF" value={solicitation.conductor.uf} fieldName="uf" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                        </div>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsDataDialogOpen(false)}>Fechar</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
             </CardHeader>
             <CardContent>
               <p className="font-medium">
