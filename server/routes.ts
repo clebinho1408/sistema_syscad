@@ -1,11 +1,12 @@
+import { conductors, solicitations } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
 import passport from "passport";
-import { conductors, solicitations } from "@shared/schema";
-import { eq } from "drizzle-orm";
-import { db } from "./db";
+import { WebSocketServer, WebSocket } from "ws";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -339,7 +340,8 @@ export async function registerRoutes(
       const { documents: documentsList, ...conductorData } = req.body;
       
       // Update conductor
-      await db.update(conductors).set(conductorData).where(eq(conductors.id, solicitation.conductorId));
+      const { id: _, ...conductorUpdateData } = conductorData;
+      await db.update(conductors).set(conductorUpdateData).where(eq(conductors.id, solicitation.conductorId));
       
       // Handle documents if any
       if (documentsList && Array.isArray(documentsList)) {
