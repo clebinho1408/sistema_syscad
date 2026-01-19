@@ -33,6 +33,8 @@ import {
   Copy,
   Check,
   ClipboardList,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -83,6 +85,8 @@ export default function SolicitationDetailPage() {
   const [externalObservation, setExternalObservation] = useState("");
   const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [zoom, setZoom] = useState(1);
   const [copiedFields, setCopiedFields] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -257,17 +261,17 @@ export default function SolicitationDetailPage() {
                             <CopyableField label="Nome Completo" value={solicitation.conductor.nomeCompleto} fieldName="nomeCompleto" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
                           <div className="md:col-span-2">
-                            <CopyableField label="Nome da Mae" value={solicitation.conductor.nomeMae} fieldName="nomeMae" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                            <CopyableField label="Nome da Mãe" value={solicitation.conductor.nomeMae} fieldName="nomeMae" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
                           <div className="md:col-span-2">
                             <CopyableField label="Nome do Pai" value={solicitation.conductor.nomePai || "-"} fieldName="nomePai" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
                           <CopyableField label="Nacionalidade" value={solicitation.conductor.nacionalidade} fieldName="nacionalidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Data de Nascimento" value={solicitation.conductor.dataNascimento} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Data de Nascimento" value={format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Cidade de Nascimento" value={solicitation.conductor.cidadeNascimento} fieldName="cidadeNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="UF Nascimento" value={solicitation.conductor.ufNascimento} fieldName="ufNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="RG" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Orgao Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="orgaoEmissorUf" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Órgão Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="orgaoEmissorUf" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         </div>
                       </div>
                       <Separator />
@@ -277,7 +281,7 @@ export default function SolicitationDetailPage() {
                           <CopyableField label="CEP" value={solicitation.conductor.cep} fieldName="cep" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Tipo de Logradouro" value={solicitation.conductor.tipoLogradouro} fieldName="tipoLogradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Logradouro" value={solicitation.conductor.logradouro} fieldName="logradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Numero" value={solicitation.conductor.numero} fieldName="numero" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Número" value={solicitation.conductor.numero} fieldName="numero" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Complemento" value={solicitation.conductor.complemento || "-"} fieldName="complemento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Bairro" value={solicitation.conductor.bairro} fieldName="bairro" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Cidade" value={solicitation.conductor.cidade} fieldName="cidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
@@ -324,7 +328,7 @@ export default function SolicitationDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Data de Nascimento</p>
-                <p className="font-medium">{solicitation.conductor.dataNascimento}</p>
+                <p className="font-medium">{format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Naturalidade</p>
@@ -335,7 +339,7 @@ export default function SolicitationDetailPage() {
                 <p className="font-medium">{solicitation.conductor.rg}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Orgao Emissor / UF</p>
+                <p className="text-sm text-muted-foreground">Órgão Emissor / UF</p>
                 <p className="font-medium">{solicitation.conductor.orgaoEmissor}/{solicitation.conductor.ufEmissor}</p>
               </div>
             </CardContent>
@@ -401,39 +405,24 @@ export default function SolicitationDetailPage() {
                     <p className="font-medium truncate">{doc.fileName}</p>
                     <p className="text-sm text-muted-foreground">{doc.fileType}</p>
                   </div>
-                  {canEdit && (
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={doc.isLegible || false}
-                          onCheckedChange={(checked) => updateDocumentMutation.mutate({ documentId: doc.id, data: { isLegible: checked } })}
-                          data-testid={`check-legible-${doc.id}`}
-                        />
-                        Legível
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={doc.isValid || false}
-                          onCheckedChange={(checked) => updateDocumentMutation.mutate({ documentId: doc.id, data: { isValid: checked } })}
-                          data-testid={`check-valid-${doc.id}`}
-                        />
-                        Válido
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={doc.isCompatible || false}
-                          onCheckedChange={(checked) => updateDocumentMutation.mutate({ documentId: doc.id, data: { isCompatible: checked } })}
-                          data-testid={`check-compatible-${doc.id}`}
-                        />
-                        Compatível
-                      </label>
-                    </div>
-                  )}
-                  <a href={doc.fileData} download={doc.fileName} target="_blank" rel="noopener noreferrer">
-                    <Button variant="ghost" size="icon" data-testid={`button-download-${doc.id}`}>
-                      <Download className="w-4 h-4" />
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => {
+                        setSelectedDoc(doc);
+                        setZoom(1);
+                      }}
+                      data-testid={`button-view-${doc.id}`}
+                    >
+                      <Send className="w-4 h-4" />
                     </Button>
-                  </a>
+                    <a href={doc.fileData} download={doc.fileName} target="_blank" rel="noopener noreferrer">
+                      <Button variant="ghost" size="icon" data-testid={`button-download-${doc.id}`}>
+                        <Download className="w-4 h-4" />
+                      </Button>
+                    </a>
+                  </div>
                 </div>
               ))}
               {(!documents || documents.length === 0) && (
@@ -441,6 +430,50 @@ export default function SolicitationDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          <Dialog open={!!selectedDoc} onOpenChange={(open) => !open && setSelectedDoc(null)}>
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+              <DialogHeader className="p-4 border-b flex flex-row items-center justify-between">
+                <div>
+                  <DialogTitle>Detalhes do Documento</DialogTitle>
+                  <DialogDescription>{selectedDoc?.fileName}</DialogDescription>
+                </div>
+                <div className="flex items-center gap-2 mr-6">
+                  <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.max(0.5, prev - 0.25))}>
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm font-medium w-12 text-center">{Math.round(zoom * 100)}%</span>
+                  <Button variant="outline" size="icon" onClick={() => setZoom(prev => Math.min(3, prev + 0.25))}>
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                </div>
+              </DialogHeader>
+              <div className="flex-1 overflow-auto bg-muted/30 flex items-center justify-center p-4">
+                {selectedDoc?.fileType.startsWith('image/') ? (
+                  <img 
+                    src={selectedDoc.fileData} 
+                    alt={selectedDoc.fileName}
+                    style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s' }}
+                    className="max-w-none shadow-lg origin-center"
+                  />
+                ) : selectedDoc?.fileType === 'application/pdf' ? (
+                  <iframe 
+                    src={selectedDoc.fileData} 
+                    className="w-full h-full"
+                    style={{ transform: `scale(${zoom})`, transition: 'transform 0.2s', transformOrigin: 'top center' }}
+                  />
+                ) : (
+                  <div className="text-center">
+                    <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                    <p>Visualização não disponível para este tipo de arquivo.</p>
+                    <a href={selectedDoc?.fileData} download={selectedDoc?.fileName} className="text-primary hover:underline mt-2 inline-block">
+                      Baixar arquivo
+                    </a>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {solicitation.observacoesExternas && (
             <Card className="border-amber-200 dark:border-amber-800">
@@ -494,8 +527,8 @@ export default function SolicitationDetailPage() {
           {canEdit && !isFinalized && (
             <Card>
               <CardHeader>
-                <CardTitle>Acoes</CardTitle>
-                <CardDescription>Atualize o status da solicitacao</CardDescription>
+                <CardTitle>Ações</CardTitle>
+                <CardDescription>Atualize o status da solicitação</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button variant="default" className="w-full" onClick={handleCadastrado} disabled={updateStatusMutation.isPending} data-testid="button-cadastrado">
@@ -514,11 +547,11 @@ export default function SolicitationDetailPage() {
                     <DialogHeader>
                       <DialogTitle>Marcar como Pendente</DialogTitle>
                       <DialogDescription>
-                        Informe o motivo da pendencia. Esta informacao sera visivel para a autoescola.
+                        Informe o motivo da pendência. Esta informação será visível para a autoescola.
                       </DialogDescription>
                     </DialogHeader>
                     <Textarea
-                      placeholder="Digite o motivo da pendencia..."
+                      placeholder="Digite o motivo da pendência..."
                       value={pendingReason}
                       onChange={(e) => setPendingReason(e.target.value)}
                       rows={4}
@@ -528,7 +561,7 @@ export default function SolicitationDetailPage() {
                       <Button variant="outline" onClick={() => setIsPendingDialogOpen(false)}>Cancelar</Button>
                       <Button variant="default" onClick={handlePendente} disabled={updateStatusMutation.isPending}>
                         {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Confirmar Pendencia
+                        Confirmar Pendência
                       </Button>
                     </DialogFooter>
                   </DialogContent>
