@@ -1,3 +1,4 @@
+import type { ChangeEvent, InputHTMLAttributes } from "react";
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,46 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { apiRequest } from "@/lib/queryClient";
 
+function removeAccents(str: string): string {
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function toUpperWithoutAccents(str: string): string {
+  return removeAccents(str).toUpperCase();
+}
+
+function parseDateLocal(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function calculateAge(birthDate: Date): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+interface UppercaseInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+  value?: string;
+}
+
+function UppercaseInput({ onChange, value, ...props }: UppercaseInputProps) {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const transformed = toUpperWithoutAccents(e.target.value);
+    e.target.value = transformed;
+    if (onChange) {
+      onChange(e);
+    }
+  };
+  return <Input {...props} value={value} onChange={handleChange} className="uppercase" />;
+}
+
 const UF_OPTIONS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
   "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
@@ -20,32 +61,40 @@ const UF_OPTIONS = [
 ];
 
 const TIPO_LOGRADOURO_OPTIONS = [
-  "Rua", "Avenida", "Alameda", "Travessa", "Praça", "Rodovia", "Estrada", "Largo", "Via", "Outro"
+  "RUA", "AVENIDA", "ALAMEDA", "TRAVESSA", "PRACA", "RODOVIA", "ESTRADA", "LARGO", "VIA", "OUTRO"
 ];
 
 const solicitationSchema = z.object({
   type: z.enum(["novo_cadastro", "alteracao_dados", "atualizacao", "regularizacao"]),
-  cpf: z.string().min(11, "CPF inválido"),
-  nomeCompleto: z.string().min(2, "Nome é obrigatório"),
-  nomeMae: z.string().min(2, "Nome da mãe é obrigatório"),
-  nomePai: z.string().optional(),
-  nacionalidade: z.string().min(2, "Nacionalidade é obrigatória"),
-  rg: z.string().min(5, "RG é obrigatório"),
-  orgaoEmissor: z.string().min(2, "Órgão emissor é obrigatório"),
+  cpf: z.string().min(11, "CPF inválido").transform(toUpperWithoutAccents),
+  nomeCompleto: z.string().min(2, "Nome é obrigatório").transform(toUpperWithoutAccents),
+  nomeMae: z.string().min(2, "Nome da mãe é obrigatório").transform(toUpperWithoutAccents),
+  nomePai: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
+  nacionalidade: z.string().min(2, "Nacionalidade é obrigatória").transform(toUpperWithoutAccents),
+  rg: z.string().min(5, "RG é obrigatório").transform(toUpperWithoutAccents),
+  orgaoEmissor: z.string().min(2, "Órgão emissor é obrigatório").transform(toUpperWithoutAccents),
   ufEmissor: z.string().min(2, "UF é obrigatória"),
-  dataNascimento: z.string().min(8, "Data de nascimento é obrigatória"),
-  cidadeNascimento: z.string().min(2, "Cidade é obrigatória"),
+  dataNascimento: z.string().min(8, "Data de nascimento é obrigatória").refine((val) => {
+    const date = parseDateLocal(val);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date <= today;
+  }, "Data de nascimento não pode ser no futuro").refine((val) => {
+    const date = parseDateLocal(val);
+    return calculateAge(date) >= 18;
+  }, "O candidato deve ter pelo menos 18 anos completos"),
+  cidadeNascimento: z.string().min(2, "Cidade é obrigatória").transform(toUpperWithoutAccents),
   ufNascimento: z.string().min(2, "UF é obrigatória"),
-  cep: z.string().min(8, "CEP é obrigatório"),
-  tipoLogradouro: z.string().min(2, "Tipo de logradouro é obrigatório"),
-  logradouro: z.string().min(2, "Logradouro é obrigatório"),
-  numero: z.string().min(1, "Número é obrigatório"),
-  complemento: z.string().optional(),
-  bairro: z.string().min(2, "Bairro é obrigatório"),
-  cidade: z.string().min(2, "Cidade é obrigatória"),
+  cep: z.string().min(8, "CEP é obrigatório").transform(toUpperWithoutAccents),
+  tipoLogradouro: z.string().min(2, "Tipo de logradouro é obrigatório").transform(toUpperWithoutAccents),
+  logradouro: z.string().min(2, "Logradouro é obrigatório").transform(toUpperWithoutAccents),
+  numero: z.string().min(1, "Número é obrigatório").transform(toUpperWithoutAccents),
+  complemento: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
+  bairro: z.string().min(2, "Bairro é obrigatório").transform(toUpperWithoutAccents),
+  cidade: z.string().min(2, "Cidade é obrigatória").transform(toUpperWithoutAccents),
   uf: z.string().min(2, "UF é obrigatória"),
-  telefone1: z.string().min(10, "Telefone é obrigatório"),
-  telefone2: z.string().optional(),
+  telefone1: z.string().min(10, "Telefone é obrigatório").transform(toUpperWithoutAccents),
+  telefone2: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   email: z.string().email("E-mail inválido"),
 });
 
@@ -71,7 +120,7 @@ export default function NewSolicitationPage() {
       nomeCompleto: "",
       nomeMae: "",
       nomePai: "",
-      nacionalidade: "Brasileira",
+      nacionalidade: "BRASILEIRA",
       rg: "",
       orgaoEmissor: "",
       ufEmissor: "",
@@ -223,7 +272,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>CPF *</FormLabel>
                     <FormControl>
-                      <Input placeholder="000.000.000-00" {...field} data-testid="input-cpf" />
+                      <UppercaseInput placeholder="000.000.000-00" {...field} data-testid="input-cpf" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -236,7 +285,7 @@ export default function NewSolicitationPage() {
                   <FormItem className="md:col-span-2">
                     <FormLabel>Nome Completo *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nome completo do candidato" {...field} data-testid="input-nome" />
+                      <UppercaseInput placeholder="NOME COMPLETO DO CANDIDATO" {...field} data-testid="input-nome" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -249,7 +298,7 @@ export default function NewSolicitationPage() {
                   <FormItem className="md:col-span-2">
                     <FormLabel>Nome da Mãe *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nome completo da mãe" {...field} data-testid="input-mae" />
+                      <UppercaseInput placeholder="NOME COMPLETO DA MAE" {...field} data-testid="input-mae" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -262,7 +311,7 @@ export default function NewSolicitationPage() {
                   <FormItem className="md:col-span-1">
                     <FormLabel>Nome do Pai</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nome completo do pai" {...field} data-testid="input-pai" />
+                      <UppercaseInput placeholder="NOME COMPLETO DO PAI" {...field} data-testid="input-pai" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -275,7 +324,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Nacionalidade *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nacionalidade" {...field} data-testid="input-nacionalidade" />
+                      <UppercaseInput placeholder="BRASILEIRA" {...field} data-testid="input-nacionalidade" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -301,7 +350,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Cidade de Nascimento *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Cidade" {...field} data-testid="input-cidade-nasc" />
+                      <UppercaseInput placeholder="CIDADE" {...field} data-testid="input-cidade-nasc" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -336,7 +385,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>RG *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Número do RG" {...field} data-testid="input-rg" />
+                      <UppercaseInput placeholder="NUMERO DO RG" {...field} data-testid="input-rg" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -349,7 +398,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Órgão Emissor *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: SSP" {...field} data-testid="input-orgao" />
+                      <UppercaseInput placeholder="SSP" {...field} data-testid="input-orgao" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -393,7 +442,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>CEP *</FormLabel>
                     <FormControl>
-                      <Input placeholder="00000-000" {...field} data-testid="input-cep" />
+                      <UppercaseInput placeholder="00000-000" {...field} data-testid="input-cep" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -428,7 +477,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Logradouro *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nome da rua" {...field} data-testid="input-logradouro" />
+                      <UppercaseInput placeholder="NOME DA RUA" {...field} data-testid="input-logradouro" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -441,7 +490,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Número *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nº" {...field} data-testid="input-numero" />
+                      <UppercaseInput placeholder="N" {...field} data-testid="input-numero" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -454,7 +503,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Complemento</FormLabel>
                     <FormControl>
-                      <Input placeholder="Apto, Bloco, etc." {...field} data-testid="input-complemento" />
+                      <UppercaseInput placeholder="APTO, BLOCO, ETC." {...field} data-testid="input-complemento" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -467,7 +516,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Bairro *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Bairro" {...field} data-testid="input-bairro" />
+                      <UppercaseInput placeholder="BAIRRO" {...field} data-testid="input-bairro" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -480,7 +529,7 @@ export default function NewSolicitationPage() {
                   <FormItem className="md:col-span-2">
                     <FormLabel>Cidade *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Cidade" {...field} data-testid="input-cidade" />
+                      <UppercaseInput placeholder="CIDADE" {...field} data-testid="input-cidade" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -524,7 +573,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Telefone 1 *</FormLabel>
                     <FormControl>
-                      <Input placeholder="(00) 00000-0000" {...field} data-testid="input-telefone1" />
+                      <UppercaseInput placeholder="(00) 00000-0000" {...field} data-testid="input-telefone1" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -537,7 +586,7 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Telefone 2</FormLabel>
                     <FormControl>
-                      <Input placeholder="(00) 00000-0000" {...field} data-testid="input-telefone2" />
+                      <UppercaseInput placeholder="(00) 00000-0000" {...field} data-testid="input-telefone2" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
