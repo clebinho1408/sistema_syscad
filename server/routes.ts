@@ -158,6 +158,33 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/solicitations/check-cpf/:cpf", requireAuth, requireRole("autoescola"), async (req, res) => {
+    try {
+      const cpf = req.params.cpf.replace(/\D/g, "");
+      const school = await storage.getDrivingSchoolByUserId(req.user!.id);
+      
+      if (!school) {
+        return res.json({ exists: false, differentSchool: false });
+      }
+
+      const existingConductor = await storage.getConductorByCpf(cpf);
+      
+      if (!existingConductor) {
+        return res.json({ exists: false, differentSchool: false });
+      }
+
+      const existingSolicitation = await storage.getSolicitationByConductorId(existingConductor.id);
+      
+      if (existingSolicitation && existingSolicitation.drivingSchoolId !== school.id) {
+        return res.json({ exists: true, differentSchool: true });
+      }
+
+      return res.json({ exists: true, differentSchool: false });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/solicitations", requireAuth, async (req, res) => {
     try {
       let filters: any = {};

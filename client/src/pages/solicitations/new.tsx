@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, Upload, X, FileIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -72,27 +73,27 @@ const solicitationSchema = z.object({
   cpf: z.string().min(11, "CPF inválido").transform(toUpperWithoutAccents),
   nomeCompleto: z.string().min(2, "Nome é obrigatório").transform(toUpperWithoutAccents),
   nomeSocial: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
+  nomeMae: z.string().min(2, "Nome da mãe é obrigatório").transform(toUpperWithoutAccents),
+  nomePai: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   filiacaoAfetiva1: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   filiacaoAfetiva2: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   sexo: z.string().optional(),
-  nomeMae: z.string().min(2, "Nome da mãe é obrigatório").transform(toUpperWithoutAccents),
-  nomePai: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   nacionalidade: z.string().min(2, "Nacionalidade é obrigatória").transform(toUpperWithoutAccents),
   tipoDocumento: z.string().optional(),
-  rg: z.string().min(5, "RG é obrigatório").transform(toUpperWithoutAccents),
+  rg: z.string().min(5, "Identidade é obrigatória").transform(toUpperWithoutAccents),
   orgaoEmissor: z.string().min(2, "Órgão emissor é obrigatório").transform(toUpperWithoutAccents),
   ufEmissor: z.string().min(2, "UF é obrigatória"),
-  dataNascimento: z.string().min(8, "Data de nascimento é obrigatória").refine((val) => {
+  dataNascimento: z.string().min(8, "Data nascimento é obrigatória").refine((val) => {
     const date = parseDateLocal(val);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return date <= today;
-  }, "Data de nascimento não pode ser no futuro").refine((val) => {
+  }, "Data nascimento não pode ser no futuro").refine((val) => {
     const date = parseDateLocal(val);
     return calculateAge(date) >= 18;
   }, "O candidato deve ter pelo menos 18 anos completos"),
   ufNascimento: z.string().min(2, "UF é obrigatória"),
-  cidadeNascimento: z.string().min(2, "Cidade é obrigatória").transform(toUpperWithoutAccents),
+  cidadeNascimento: z.string().min(2, "Local nascimento é obrigatório").transform(toUpperWithoutAccents),
   cep: z.string().min(8, "CEP é obrigatório").transform(toUpperWithoutAccents),
   tipoLogradouro: z.string().min(2, "Tipo de logradouro é obrigatório").transform(toUpperWithoutAccents),
   logradouro: z.string().min(2, "Logradouro é obrigatório").transform(toUpperWithoutAccents),
@@ -104,7 +105,9 @@ const solicitationSchema = z.object({
   telefone1: z.string().min(10, "Telefone é obrigatório").transform(toUpperWithoutAccents),
   dddCelular: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   telefone2: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
-  email: z.string().email("E-mail inválido"),
+  email: z.string().optional(),
+  naoPossuiEmail: z.boolean().optional(),
+  naoQuerInformarEmail: z.boolean().optional(),
 });
 
 type SolicitationFormData = z.infer<typeof solicitationSchema>;
@@ -141,11 +144,11 @@ export default function NewSolicitationPage() {
       cpf: "",
       nomeCompleto: "",
       nomeSocial: "",
+      nomeMae: "",
+      nomePai: "",
       filiacaoAfetiva1: "",
       filiacaoAfetiva2: "",
       sexo: "",
-      nomeMae: "",
-      nomePai: "",
       nacionalidade: "BRASILEIRA",
       tipoDocumento: "",
       rg: "",
@@ -166,8 +169,33 @@ export default function NewSolicitationPage() {
       dddCelular: "",
       telefone2: "",
       email: "",
+      naoPossuiEmail: false,
+      naoQuerInformarEmail: false,
     },
   });
+
+  const [cpfError, setCpfError] = useState<string | null>(null);
+  const [isValidatingCpf, setIsValidatingCpf] = useState(false);
+
+  const validateCpfUnique = async (cpf: string) => {
+    const cleanCpf = cpf.replace(/\D/g, "");
+    if (cleanCpf.length < 11) return;
+
+    setIsValidatingCpf(true);
+    setCpfError(null);
+    try {
+      const response = await fetch(`/api/solicitations/check-cpf/${cleanCpf}`);
+      const data = await response.json();
+      
+      if (data.exists && data.differentSchool) {
+        setCpfError("Este Candidato/Condutor já está cadastrado em outra Autoescola, favor solicitar via Chat a Administração a transferência dessa Solicitação.");
+      }
+    } catch {
+      console.error("Erro ao validar CPF");
+    } finally {
+      setIsValidatingCpf(false);
+    }
+  };
 
   const [isLoadingCep, setIsLoadingCep] = useState(false);
 
@@ -331,8 +359,22 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>CPF *</FormLabel>
                     <FormControl>
-                      <UppercaseInput placeholder="000.000.000-00" {...field} data-testid="input-cpf" />
+                      <div className="relative">
+                        <UppercaseInput 
+                          placeholder="000.000.000-00" 
+                          {...field} 
+                          data-testid="input-cpf"
+                          onBlur={(e) => {
+                            field.onBlur();
+                            validateCpfUnique(e.target.value);
+                          }}
+                        />
+                        {isValidatingCpf && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
                     </FormControl>
+                    {cpfError && <p className="text-sm font-medium text-destructive">{cpfError}</p>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -342,7 +384,7 @@ export default function NewSolicitationPage() {
                 name="nomeCompleto"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
-                    <FormLabel>Nome Completo *</FormLabel>
+                    <FormLabel>Nome Civil *</FormLabel>
                     <FormControl>
                       <UppercaseInput placeholder="NOME COMPLETO DO CANDIDATO" {...field} data-testid="input-nome" />
                     </FormControl>
@@ -365,9 +407,35 @@ export default function NewSolicitationPage() {
               />
               <FormField
                 control={form.control}
+                name="nomeMae"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-3">
+                    <FormLabel>Nome da Mãe *</FormLabel>
+                    <FormControl>
+                      <UppercaseInput placeholder="NOME COMPLETO DA MAE" {...field} data-testid="input-mae" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="nomePai"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-3">
+                    <FormLabel>Nome do Pai</FormLabel>
+                    <FormControl>
+                      <UppercaseInput placeholder="NOME COMPLETO DO PAI" {...field} data-testid="input-pai" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="filiacaoAfetiva1"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-2">
+                  <FormItem className="md:col-span-3">
                     <FormLabel>Filiação Afetiva 1</FormLabel>
                     <FormControl>
                       <UppercaseInput placeholder="NOME COMPLETO" {...field} data-testid="input-filiacao1" />
@@ -380,7 +448,7 @@ export default function NewSolicitationPage() {
                 control={form.control}
                 name="filiacaoAfetiva2"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-1">
+                  <FormItem className="md:col-span-3">
                     <FormLabel>Filiação Afetiva 2</FormLabel>
                     <FormControl>
                       <UppercaseInput placeholder="NOME COMPLETO" {...field} data-testid="input-filiacao2" />
@@ -407,32 +475,6 @@ export default function NewSolicitationPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="nomeMae"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>Nome da Mãe *</FormLabel>
-                    <FormControl>
-                      <UppercaseInput placeholder="NOME COMPLETO DA MAE" {...field} data-testid="input-mae" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="nomePai"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-3">
-                    <FormLabel>Nome do Pai</FormLabel>
-                    <FormControl>
-                      <UppercaseInput placeholder="NOME COMPLETO DO PAI" {...field} data-testid="input-pai" />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -477,9 +519,9 @@ export default function NewSolicitationPage() {
                 name="rg"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>RG *</FormLabel>
+                    <FormLabel>Identidade *</FormLabel>
                     <FormControl>
-                      <UppercaseInput placeholder="NUMERO DO RG" {...field} data-testid="input-rg" />
+                      <UppercaseInput placeholder="NUMERO DA IDENTIDADE" {...field} data-testid="input-rg" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -525,7 +567,7 @@ export default function NewSolicitationPage() {
                 name="dataNascimento"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data de Nascimento *</FormLabel>
+                    <FormLabel>Data Nascimento *</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} data-testid="input-nascimento" />
                     </FormControl>
@@ -560,7 +602,7 @@ export default function NewSolicitationPage() {
                 name="cidadeNascimento"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cidade de Nascimento *</FormLabel>
+                    <FormLabel>Local Nascimento *</FormLabel>
                     <FormControl>
                       <UppercaseInput placeholder="CIDADE" {...field} data-testid="input-cidade-nasc" />
                     </FormControl>
@@ -726,7 +768,7 @@ export default function NewSolicitationPage() {
                 name="telefone1"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone 1 *</FormLabel>
+                    <FormLabel>Telefone *</FormLabel>
                     <FormControl>
                       <UppercaseInput placeholder="(00) 00000-0000" {...field} data-testid="input-telefone1" />
                     </FormControl>
@@ -752,7 +794,7 @@ export default function NewSolicitationPage() {
                 name="telefone2"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone 2</FormLabel>
+                    <FormLabel>Telefone Celular</FormLabel>
                     <FormControl>
                       <UppercaseInput placeholder="(00) 00000-0000" {...field} data-testid="input-telefone2" />
                     </FormControl>
@@ -764,15 +806,67 @@ export default function NewSolicitationPage() {
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-3">
-                    <FormLabel>E-mail *</FormLabel>
+                  <FormItem>
+                    <FormLabel>E-mail {!form.watch("naoPossuiEmail") && !form.watch("naoQuerInformarEmail") && "*"}</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="email@exemplo.com" {...field} data-testid="input-email" />
+                      <Input 
+                        type="email" 
+                        placeholder="email@exemplo.com" 
+                        {...field} 
+                        data-testid="input-email"
+                        disabled={form.watch("naoPossuiEmail") || form.watch("naoQuerInformarEmail")}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <div className="md:col-span-2 flex items-center gap-6 pt-6">
+                <FormField
+                  control={form.control}
+                  name="naoPossuiEmail"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <Checkbox 
+                          checked={field.value} 
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            if (checked) {
+                              form.setValue("naoQuerInformarEmail", false);
+                              form.setValue("email", "");
+                            }
+                          }}
+                          data-testid="checkbox-nao-possui-email"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal cursor-pointer">Não possui E-mail</FormLabel>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="naoQuerInformarEmail"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                      <FormControl>
+                        <Checkbox 
+                          checked={field.value} 
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            if (checked) {
+                              form.setValue("naoPossuiEmail", false);
+                              form.setValue("email", "");
+                            }
+                          }}
+                          data-testid="checkbox-nao-quer-informar-email"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal cursor-pointer">Não quis informar o E-mail</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
           </Card>
 

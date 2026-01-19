@@ -24,7 +24,9 @@ export interface IStorage {
   updateDrivingSchool(id: string, data: Partial<InsertDrivingSchool>): Promise<DrivingSchool | undefined>;
 
   getConductor(id: string): Promise<Conductor | undefined>;
+  getConductorByCpf(cpf: string): Promise<Conductor | undefined>;
   createConductor(data: InsertConductor): Promise<Conductor>;
+  getSolicitationByConductorId(conductorId: string): Promise<Solicitation | undefined>;
 
   getSolicitation(id: string): Promise<SolicitationWithDetails | undefined>;
   getSolicitations(filters?: { drivingSchoolId?: string; status?: string; type?: string }): Promise<SolicitationWithDetails[]>;
@@ -107,9 +109,19 @@ export class DatabaseStorage implements IStorage {
     return conductor || undefined;
   }
 
+  async getConductorByCpf(cpf: string): Promise<Conductor | undefined> {
+    const [conductor] = await db.select().from(conductors).where(eq(conductors.cpf, cpf));
+    return conductor || undefined;
+  }
+
   async createConductor(data: InsertConductor): Promise<Conductor> {
     const [conductor] = await db.insert(conductors).values(data).returning();
     return conductor;
+  }
+
+  async getSolicitationByConductorId(conductorId: string): Promise<Solicitation | undefined> {
+    const [solicitation] = await db.select().from(solicitations).where(eq(solicitations.conductorId, conductorId));
+    return solicitation || undefined;
   }
 
   async getSolicitation(id: string): Promise<SolicitationWithDetails | undefined> {
