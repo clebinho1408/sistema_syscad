@@ -753,8 +753,23 @@ export default function SolicitationDetailPage() {
                                 id={`field-${field.id}`}
                                 checked={requestedFields.includes(field.id)}
                                 onCheckedChange={(checked) => {
-                                  if (checked) setRequestedFields([...requestedFields, field.id]);
-                                  else setRequestedFields(requestedFields.filter(f => f !== field.id));
+                                  if (checked) {
+                                    setRequestedFields([...requestedFields, field.id]);
+                                    // Auto-select Renach Assinado for any field
+                                    if (!requestedDocs.includes("renach_assinado")) {
+                                      setRequestedDocs(prev => [...prev, "renach_assinado"]);
+                                    }
+                                    // Auto-select Comprovante de Residência for Endereço
+                                    if (field.id === "endereco" && !requestedDocs.includes("comprovante_residencia")) {
+                                      setRequestedDocs(prev => [...prev, "comprovante_residencia"]);
+                                    }
+                                    // Auto-select Documento de Identificação for RG
+                                    if (field.id === "rg" && !requestedDocs.includes("documento_identificacao")) {
+                                      setRequestedDocs(prev => [...prev, "documento_identificacao"]);
+                                    }
+                                  } else {
+                                    setRequestedFields(requestedFields.filter(f => f !== field.id));
+                                  }
                                 }}
                               />
                               <label htmlFor={`field-${field.id}`} className="text-sm leading-none cursor-pointer">

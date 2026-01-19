@@ -104,13 +104,26 @@ interface FileUpload {
   name: string;
   data: string;
   type: string;
+  category: string;
 }
+
+const DOCUMENT_CATEGORIES = [
+  { id: "renach_assinado", label: "Renach Assinado", required: true },
+  { id: "documento_identificacao", label: "Documento de Identificação", required: true },
+  { id: "comprovante_residencia", label: "Comprovante de Residência", required: true },
+  { id: "outros", label: "Outros Documentos/Declarações", required: false },
+];
 
 export default function NewSolicitationPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [files, setFiles] = useState<FileUpload[]>([]);
+  const [files, setFiles] = useState<Record<string, FileUpload | null>>({
+    renach_assinado: null,
+    documento_identificacao: null,
+    comprovante_residencia: null,
+    outros: null,
+  });
 
   const form = useForm<SolicitationFormData>({
     resolver: zodResolver(solicitationSchema),
@@ -163,51 +176,55 @@ export default function NewSolicitationPage() {
     },
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
-    if (!selectedFiles) return;
+  const handleFileChange = (category: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
 
-    Array.from(selectedFiles).forEach((file) => {
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "Arquivo muito grande",
-          description: `${file.name} excede o limite de 5MB`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        setFiles((prev) => [
-          ...prev,
-          {
-            name: file.name,
-            data: reader.result as string,
-            type: file.type,
-          },
-        ]);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    e.target.value = "";
-  };
-
-  const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const onSubmit = (data: SolicitationFormData) => {
-    if (files.length === 0) {
+    if (selectedFile.size > 5 * 1024 * 1024) {
       toast({
-        title: "Documentos obrigatórios",
-        description: "Anexe pelo menos um documento para continuar.",
+        title: "Arquivo muito grande",
+        description: `${selectedFile.name} excede o limite de 5MB`,
         variant: "destructive",
       });
       return;
     }
-    createMutation.mutate({ ...data, documents: files });
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFiles((prev) => ({
+        ...prev,
+        [category]: {
+          name: selectedFile.name,
+          data: reader.result as string,
+          type: selectedFile.type,
+          category,
+        },
+      }));
+    };
+    reader.readAsDataURL(selectedFile);
+    e.target.value = "";
+  };
+
+  const removeFile = (category: string) => {
+    setFiles((prev) => ({ ...prev, [category]: null }));
+  };
+
+  const onSubmit = (data: SolicitationFormData) => {
+    const requiredCategories = DOCUMENT_CATEGORIES.filter(c => c.required).map(c => c.id);
+    const missingDocs = requiredCategories.filter(cat => !files[cat]);
+    
+    if (missingDocs.length > 0) {
+      const missingNames = missingDocs.map(id => DOCUMENT_CATEGORIES.find(c => c.id === id)?.label).join(", ");
+      toast({
+        title: "Documentos obrigatórios",
+        description: `Anexe os seguintes documentos: ${missingNames}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const documentsArray = Object.values(files).filter((f): f is FileUpload => f !== null);
+    createMutation.mutate({ ...data, documents: documentsArray });
   };
 
   return (
@@ -611,45 +628,54 @@ export default function NewSolicitationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Documentação</CardTitle>
-              <CardDescription>Anexe os documentos necessários digitalizados</CardDescription>
+              <CardDescription>Anexe os documentos necessários digitalizados (máximo 5MB por arquivo)</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
-                <div className="mt-2 space-y-2 text-center">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Anexos Obrigatórios:
-                  </p>
-                  <ul className="text-xs text-muted-foreground inline-block text-left list-disc list-inside">
-                    <li>Renach Assinado</li>
-                    <li>Documento de Identificação</li>
-                    <li>Comprovante de Residência</li>
-                    <li>Outros Documentos/Declarações (Opcional)</li>
-                  </ul>
-                </div>
-                <input type="file" multiple className="hidden" id="file-upload" onChange={handleFileChange} />
-                <label htmlFor="file-upload" className="mt-4 block text-sm font-medium text-primary cursor-pointer hover:underline">
-                  Clique para selecionar arquivos
-                </label>
-              </div>
-
-              {files.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Arquivos selecionados:</p>
-                  {files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 border rounded-lg bg-muted/50">
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              {DOCUMENT_CATEGORIES.map((category) => (
+                <div key={category.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      {category.label}
+                      {category.required && <span className="text-destructive ml-1">*</span>}
+                    </p>
+                  </div>
+                  
+                  {files[category.id] ? (
+                    <div className="flex items-center justify-between p-2 border rounded-lg bg-muted/50">
                       <div className="flex items-center gap-2 overflow-hidden">
                         <FileIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                        <span className="text-sm truncate">{file.name}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase">{file.type.split('/')[1]}</span>
+                        <span className="text-xs truncate">{files[category.id]!.name}</span>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => removeFile(index)} className="h-8 w-8 text-destructive">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeFile(category.id)} 
+                        className="h-7 w-7 text-destructive"
+                        type="button"
+                      >
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                      <Upload className="w-6 h-6 mx-auto text-muted-foreground" />
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        id={`file-upload-${category.id}`} 
+                        onChange={handleFileChange(category.id)}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                      />
+                      <label 
+                        htmlFor={`file-upload-${category.id}`} 
+                        className="mt-2 block text-xs font-medium text-primary cursor-pointer hover:underline"
+                      >
+                        Selecionar arquivo
+                      </label>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </CardContent>
           </Card>
 
