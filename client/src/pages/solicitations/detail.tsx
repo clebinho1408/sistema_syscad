@@ -317,7 +317,115 @@ export default function SolicitationDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+        {(user?.role === "operador" || user?.role === "admin") && !isFinalized && (
+          <Card className="mb-6">
+            <CardHeader className="py-3 border-b bg-muted/30">
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-primary" />
+                Ações
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Button 
+                  onClick={handleCadastrado} 
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-approve"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Aprovar Solicitação
+                </Button>
+
+                <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-orange-500 text-orange-600 hover:bg-orange-50"
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="button-pendente"
+                    >
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Pendente de Correção
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Pendente de Correção</DialogTitle>
+                      <DialogDescription>
+                        Informe o motivo da pendência para a autoescola.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <Textarea
+                        placeholder="Descreva o que precisa ser corrigido..."
+                        value={pendingReason}
+                        onChange={(e) => setPendingReason(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsPendingDialogOpen(false)}>Cancelar</Button>
+                      <Button onClick={handlePendente} disabled={updateStatusMutation.isPending}>
+                        {updateStatusMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Enviar Pendência
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Button 
+                  variant="destructive" 
+                  className="w-full"
+                  onClick={() => updateStatusMutation.mutate({ status: "reprovada", sendChatNotification: true })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-reject"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Reprovar Solicitação
+                </Button>
+              </div>
+
+              <div className="mt-4 pt-4 border-t flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Controle de Acesso:</span>
+                  {solicitation.accessGranted ? (
+                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">Acesso Concedido</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-muted-foreground">Acesso Bloqueado</Badge>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {solicitation.accessGranted ? (
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      onClick={handleRevokeAccess}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="button-revoke-access"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Revogar Acesso
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleGrantAccess}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="button-grant-access"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Conceder Acesso
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2">
@@ -342,46 +450,57 @@ export default function SolicitationDetailPage() {
                     </DialogHeader>
                     <div className="space-y-6 py-4">
                       <div>
-                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Dados Pessoais</h4>
+                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Dados do Candidato</h4>
                         <div className="grid gap-3 md:grid-cols-2">
                           <div className="md:col-span-2">
                             <CopyableField label="Nome Civil" value={solicitation.conductor.nomeCompleto} fieldName="nomeCompleto" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
+                          {solicitation.conductor.nomeSocial && (
+                            <div className="md:col-span-2">
+                              <CopyableField label="Nome Social" value={solicitation.conductor.nomeSocial} fieldName="nomeSocial" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                            </div>
+                          )}
                           <div className="md:col-span-2">
                             <CopyableField label="Nome da Mãe" value={solicitation.conductor.nomeMae} fieldName="nomeMae" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
                           <div className="md:col-span-2">
                             <CopyableField label="Nome do Pai" value={solicitation.conductor.nomePai || "-"} fieldName="nomePai" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
-                          <CopyableField label="Nacionalidade" value={solicitation.conductor.nacionalidade} fieldName="nacionalidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          {solicitation.conductor.filiacaoAfetiva1 && (
+                            <div className="md:col-span-2">
+                              <CopyableField label="Filiação Afetiva 1" value={solicitation.conductor.filiacaoAfetiva1 || ""} fieldName="filiacaoAfetiva1" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                            </div>
+                          )}
+                          {solicitation.conductor.filiacaoAfetiva2 && (
+                            <div className="md:col-span-2">
+                              <CopyableField label="Filiação Afetiva 2" value={solicitation.conductor.filiacaoAfetiva2 || ""} fieldName="filiacaoAfetiva2" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                            </div>
+                          )}
+                          <CopyableField label="Sexo" value={solicitation.conductor.sexo} fieldName="sexo" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Data Nascimento" value={format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Local Nascimento" value={solicitation.conductor.cidadeNascimento} fieldName="cidadeNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="UF Nascimento" value={solicitation.conductor.ufNascimento} fieldName="ufNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="RG" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Tipo de Documento" value={solicitation.conductor.tipoDocumento} fieldName="tipoDocumento" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Identidade" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Órgão Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         </div>
                       </div>
                       <Separator />
                       <div>
-                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Endereço</h4>
+                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Endereço e Contato</h4>
                         <div className="grid gap-3 md:grid-cols-2">
                           <CopyableField label="CEP" value={solicitation.conductor.cep} fieldName="cep" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Tipo de Logradouro" value={solicitation.conductor.tipoLogradouro} fieldName="tipoLogradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Logradouro" value={solicitation.conductor.logradouro} fieldName="logradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <div className="md:col-span-2">
+                            <CopyableField label="Logradouro" value={solicitation.conductor.logradouro} fieldName="logradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          </div>
                           <CopyableField label="Número" value={solicitation.conductor.numero} fieldName="numero" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Complemento" value={solicitation.conductor.complemento || "-"} fieldName="complemento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Bairro" value={solicitation.conductor.bairro} fieldName="bairro" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Cidade" value={solicitation.conductor.cidade} fieldName="cidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="UF" value={solicitation.conductor.uf} fieldName="uf" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                        </div>
-                      </div>
-                      <Separator />
-                      <div>
-                        <h4 className="font-medium mb-3 text-sm text-muted-foreground">Contato</h4>
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <CopyableField label="Telefone" value={solicitation.conductor.telefone1} fieldName="telefone1" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Telefone Celular" value={solicitation.conductor.telefone2 || "-"} fieldName="telefone2" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="E-mail" value={solicitation.conductor.email} fieldName="email" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          {solicitation.conductor.telefone1 && (
+                            <CopyableField label="Telefone" value={solicitation.conductor.telefone1} fieldName="telefone1" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          )}
+                          <CopyableField label="Telefone Celular" value={`${solicitation.conductor.dddCelular} ${solicitation.conductor.telefone2}`} fieldName="telefone2" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <div className="md:col-span-2">
+                            <CopyableField label="E-mail" value={solicitation.conductor.email} fieldName="email" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -704,10 +823,10 @@ export default function SolicitationDetailPage() {
           )}
 
           <Card className="flex flex-col h-[500px]">
-            <CardHeader className="flex-shrink-0">
-              <CardTitle className="flex items-center justify-between gap-2">
+            <CardHeader className="flex-shrink-0 py-3 border-b bg-muted/30">
+              <CardTitle className="text-lg font-bold flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" />
+                  <MessageSquare className="w-5 h-5 text-primary" />
                   Chat Interno
                 </div>
                 <Button 
