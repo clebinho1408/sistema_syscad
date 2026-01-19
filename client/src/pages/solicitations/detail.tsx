@@ -643,11 +643,18 @@ export default function SolicitationDetailPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm mb-4">
-                  <strong>Itens liberados:</strong> {[...(solicitation.accessRequestedFields || []), ...(solicitation.accessRequestedDocuments || [])].join(", ")}
+                  <strong>Itens liberados:</strong> {[...(solicitation.accessRequestedFields || []), ...(solicitation.accessRequestedDocuments || [])].map(id => {
+                    const field = fieldsList.find(f => f.id === id);
+                    const doc = docsList.find(d => d.id === id);
+                    return field?.label || doc?.label || id;
+                  }).join(", ")}
                 </p>
-                <Button variant="outline" className="w-full border-green-300 text-green-700 hover:bg-green-100">
-                  Iniciar Correções
-                </Button>
+                <Link href={`/solicitations/${solicitation.id}/edit`}>
+                  <Button className="w-full bg-green-600 hover:bg-green-700">
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    Iniciar Correções
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           )}

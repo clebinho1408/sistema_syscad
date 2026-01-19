@@ -15,6 +15,7 @@ import DashboardPage from "@/pages/dashboard";
 import SolicitationsPage from "@/pages/solicitations/index";
 import NewSolicitationPage from "@/pages/solicitations/new";
 import SolicitationDetailPage from "@/pages/solicitations/detail";
+import SolicitationEditPage from "@/pages/solicitations/edit";
 import DrivingSchoolsPage from "@/pages/driving-schools";
 import UsersPage from "@/pages/users";
 import ReportsPage from "@/pages/reports";
@@ -109,6 +110,11 @@ function Router() {
       <Route path="/solicitations/new">
         <AppLayout>
           <ProtectedRoute component={NewSolicitationPage} allowedRoles={["autoescola"]} />
+        </AppLayout>
+      </Route>
+      <Route path="/solicitations/:id/edit">
+        <AppLayout>
+          <ProtectedRoute component={SolicitationEditPage} allowedRoles={["autoescola"]} />
         </AppLayout>
       </Route>
       <Route path="/solicitations/:id">

@@ -328,6 +328,52 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/solicitations/:id", requireAuth, requireRole("autoescola"), async (req, res) => {
+    try {
+      const solicitation = await storage.getSolicitation(req.params.id);
+      if (!solicitation) return res.status(404).json({ message: "Solicitação não encontrada" });
+      if (!solicitation.accessGranted) return res.status(403).json({ message: "Acesso negado" });
+
+      const { documents: documentsList, ...conductorData } = req.body;
+      
+      // Update conductor
+      await db.update(conductors).set(conductorData).where(eq(conductors.id, solicitation.conductorId));
+      
+      // Handle documents if any
+      if (documentsList && Array.isArray(documentsList)) {
+        for (const doc of documentsList) {
+          await storage.createDocument({
+            solicitationId: solicitation.id,
+            fileName: doc.name,
+            fileType: doc.type,
+            fileData: doc.data,
+            isLegible: null,
+            isValid: null,
+            isCompatible: null,
+          });
+        }
+      }
+
+      // Update solicitation status back to em_analise and revoke access
+      const updated = await storage.updateSolicitation(req.params.id, {
+        status: "em_analise",
+        accessGranted: false,
+        accessRequestedFields: [],
+        accessRequestedDocuments: [],
+      });
+
+      await storage.createChatMessage({
+        solicitationId: solicitation.id,
+        senderId: req.user!.id,
+        message: `[SISTEMA] Correções enviadas pela autoescola. Solicitação retornou para análise.`,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/solicitations/:id/messages", requireAuth, async (req, res) => {
     try {
       const messages = await storage.getChatMessages(req.params.id);
