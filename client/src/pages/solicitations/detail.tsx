@@ -572,51 +572,6 @@ export default function SolicitationDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <Card className="flex flex-col h-[500px]">
-            <CardHeader className="flex-shrink-0">
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Chat Interno
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
-              {messages?.map((msg) => (
-                <div 
-                  key={msg.id} 
-                  className={`flex flex-col ${msg.senderId === user?.id ? "items-end" : "items-start"}`}
-                >
-                  <div className={`max-w-[85%] p-3 rounded-lg ${
-                    msg.senderId === user?.id 
-                      ? "bg-primary text-primary-foreground rounded-tr-none" 
-                      : msg.message.startsWith("[SISTEMA]") || msg.message.startsWith("[PEDIDO DE ACESSO]")
-                        ? "bg-muted text-muted-foreground w-full text-center text-xs"
-                        : "bg-muted rounded-tl-none"
-                  }`}>
-                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                    <p className="text-[10px] mt-1 opacity-70">
-                      {format(new Date(msg.createdAt), "HH:mm", { locale: ptBR })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </CardContent>
-            <CardFooter className="p-4 pt-0 flex-shrink-0">
-              <form onSubmit={handleSendMessage} className="flex w-full gap-2">
-                <Input 
-                  placeholder="Digite uma mensagem..." 
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  disabled={isFinalized}
-                  data-testid="input-chat-message"
-                />
-                <Button type="submit" size="icon" disabled={isFinalized || sendMessageMutation.isPending} data-testid="button-send-message">
-                  {sendMessageMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </Button>
-              </form>
-            </CardFooter>
-          </Card>
-
           {canEdit && !isFinalized && (
             <Card>
               <CardHeader className="pb-3">
@@ -719,6 +674,51 @@ export default function SolicitationDetailPage() {
             </Card>
           )}
 
+          <Card className="flex flex-col h-[500px]">
+            <CardHeader className="flex-shrink-0">
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Chat Interno
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
+              {messages?.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  className={`flex flex-col ${msg.senderId === user?.id ? "items-end" : "items-start"}`}
+                >
+                  <div className={`max-w-[85%] p-3 rounded-lg ${
+                    msg.senderId === user?.id 
+                      ? "bg-primary text-primary-foreground rounded-tr-none" 
+                      : msg.message.startsWith("[SISTEMA]") || msg.message.startsWith("[PEDIDO DE ACESSO]")
+                        ? "bg-muted text-muted-foreground w-full text-center text-xs"
+                        : "bg-muted rounded-tl-none"
+                  }`}>
+                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                    <p className="text-[10px] mt-1 opacity-70">
+                      {format(new Date(msg.createdAt), "HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </CardContent>
+            <CardFooter className="p-4 pt-0 flex-shrink-0">
+              <form onSubmit={handleSendMessage} className="flex w-full gap-2">
+                <Input 
+                  placeholder="Digite uma mensagem..." 
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  disabled={isFinalized}
+                  data-testid="input-chat-message"
+                />
+                <Button type="submit" size="icon" disabled={isFinalized || sendMessageMutation.isPending} data-testid="button-send-message">
+                  {sendMessageMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </Button>
+              </form>
+            </CardFooter>
+          </Card>
+
           {isAutoescola && !isFinalized && (
             <div className="space-y-3">
               {solicitation.accessGranted ? (
@@ -736,19 +736,19 @@ export default function SolicitationDetailPage() {
                       SOLICITAR ACESSO PARA CORREÇÃO
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md">
+                  <DialogContent className="max-w-lg">
                     <DialogHeader>
                       <DialogTitle>Solicitar Acesso para Edição</DialogTitle>
                       <DialogDescription>
                         Selecione os campos e anexos que deseja corrigir. O DETRAN analisará seu pedido.
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 py-4">
+                    <div className="space-y-5 py-4">
                       <div className="space-y-3">
-                        <h4 className="text-sm font-semibold border-b pb-2">Campos Cadastrais</h4>
-                        <div className="grid grid-cols-2 gap-3">
+                        <h4 className="text-sm font-semibold">Campos Cadastrais</h4>
+                        <div className="grid grid-cols-2 gap-2">
                           {fieldsList.map((field) => (
-                            <div key={field.id} className="flex items-center space-x-2 bg-muted p-3 rounded-md">
+                            <div key={field.id} className="flex items-center space-x-2 border rounded-md px-3 py-2">
                               <Checkbox 
                                 id={`field-${field.id}`}
                                 checked={requestedFields.includes(field.id)}
@@ -757,7 +757,7 @@ export default function SolicitationDetailPage() {
                                   else setRequestedFields(requestedFields.filter(f => f !== field.id));
                                 }}
                               />
-                              <label htmlFor={`field-${field.id}`} className="text-sm font-medium leading-none cursor-pointer">
+                              <label htmlFor={`field-${field.id}`} className="text-sm leading-none cursor-pointer">
                                 {field.label}
                               </label>
                             </div>
@@ -765,10 +765,10 @@ export default function SolicitationDetailPage() {
                         </div>
                       </div>
                       <div className="space-y-3">
-                        <h4 className="text-sm font-semibold border-b pb-2">Anexos/Documentos</h4>
-                        <div className="grid grid-cols-1 gap-3">
+                        <h4 className="text-sm font-semibold">Anexos/Documentos</h4>
+                        <div className="space-y-2">
                           {docsList.map((doc) => (
-                            <div key={doc.id} className="flex items-center space-x-2 bg-muted p-3 rounded-md">
+                            <div key={doc.id} className="flex items-center space-x-2 border rounded-md px-3 py-2">
                               <Checkbox 
                                 id={`doc-${doc.id}`}
                                 checked={requestedDocs.includes(doc.id)}
@@ -777,7 +777,7 @@ export default function SolicitationDetailPage() {
                                   else setRequestedDocs(requestedDocs.filter(d => d !== doc.id));
                                 }}
                               />
-                              <label htmlFor={`doc-${doc.id}`} className="text-sm font-medium leading-none cursor-pointer">
+                              <label htmlFor={`doc-${doc.id}`} className="text-sm leading-none cursor-pointer">
                                 {doc.label}
                               </label>
                             </div>
