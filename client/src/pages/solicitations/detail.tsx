@@ -636,8 +636,7 @@ export default function SolicitationDetailPage() {
                 <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
                   <DialogTrigger asChild>
                     <Button 
-                      variant="outline" 
-                      className="w-full border-orange-500 text-orange-600 hover:bg-orange-50"
+                      className="w-full bg-red-600 hover:bg-red-700 text-white"
                       data-testid="button-set-pending"
                     >
                       <AlertTriangle className="w-4 h-4 mr-2" />
@@ -663,17 +662,6 @@ export default function SolicitationDetailPage() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-
-                <Button 
-                  variant="outline" 
-                  className="w-full border-destructive text-destructive hover:bg-destructive/5"
-                  onClick={() => updateStatusMutation.mutate({ status: "reprovada", sendChatNotification: true })}
-                  disabled={updateStatusMutation.isPending}
-                  data-testid="button-reject"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Reprovada
-                </Button>
 
                 <Separator className="my-2" />
                 
