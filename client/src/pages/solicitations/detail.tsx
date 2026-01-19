@@ -476,11 +476,10 @@ export default function SolicitationDetailPage() {
                               <CopyableField label="Filiação Afetiva 2" value={solicitation.conductor.filiacaoAfetiva2 || ""} fieldName="filiacaoAfetiva2" copiedFields={copiedFields} onCopy={copyToClipboard} />
                             </div>
                           )}
-                          <CopyableField label="Sexo" value={solicitation.conductor.sexo} fieldName="sexo" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Sexo" value={solicitation.conductor.sexo || ""} fieldName="sexo" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Data Nascimento" value={format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Tipo de Documento" value={solicitation.conductor.tipoDocumento} fieldName="tipoDocumento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Identidade" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Órgão Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Órgão Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="orgaoEmissor" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         </div>
                       </div>
                       <Separator />
@@ -497,7 +496,8 @@ export default function SolicitationDetailPage() {
                           {solicitation.conductor.telefone1 && (
                             <CopyableField label="Telefone" value={solicitation.conductor.telefone1} fieldName="telefone1" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           )}
-                          <CopyableField label="Telefone Celular" value={`${solicitation.conductor.dddCelular} ${solicitation.conductor.telefone2}`} fieldName="telefone2" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="DDD Telefone Celular" value={solicitation.conductor.dddCelular || ""} fieldName="dddCelular" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Telefone Celular" value={solicitation.conductor.telefone2 || ""} fieldName="telefone2" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <div className="md:col-span-2">
                             <CopyableField label="E-mail" value={solicitation.conductor.email} fieldName="email" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
@@ -720,108 +720,6 @@ export default function SolicitationDetailPage() {
         </div>
 
         <div className="space-y-6">
-          {canEdit && !isFinalized && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Ações</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button 
-                  className="w-full bg-green-600 hover:bg-green-700 text-white" 
-                  onClick={handleCadastrado}
-                  disabled={updateStatusMutation.isPending}
-                  data-testid="button-approve"
-                >
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Cadastrado
-                </Button>
-
-                <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      className="w-full bg-red-600 hover:bg-red-700 text-white"
-                      data-testid="button-set-pending"
-                    >
-                      <AlertTriangle className="w-4 h-4 mr-2" />
-                      Pendente
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Solicitar Correções</DialogTitle>
-                      <DialogDescription>
-                        Informe os motivos da pendência. Isso será enviado para a autoescola.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Textarea 
-                      placeholder="Descreva as correções necessárias..." 
-                      value={pendingReason}
-                      onChange={(e) => setPendingReason(e.target.value)}
-                      className="min-h-[100px]"
-                    />
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsPendingDialogOpen(false)}>Cancelar</Button>
-                      <Button onClick={handlePendente} disabled={updateStatusMutation.isPending}>Enviar Pendência</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                <Separator className="my-2" />
-                
-                {(solicitation.accessRequestedFields?.length ?? 0) > 0 || (solicitation.accessRequestedDocuments?.length ?? 0) > 0 ? (
-                  <>
-                    <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-300 dark:border-orange-800">
-                      <p className="text-sm font-bold flex items-center gap-2 mb-2 text-orange-700 dark:text-orange-400">
-                        <AlertTriangle className="w-4 h-4" />
-                        Pedido de Acesso Pendente
-                      </p>
-                      {solicitation.accessRequestedFields && solicitation.accessRequestedFields.length > 0 && (
-                        <div className="mb-2">
-                          <p className="text-xs font-medium text-muted-foreground">Campos solicitados:</p>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {solicitation.accessRequestedFields.map((f: string) => (
-                              <Badge key={f} variant="secondary" className="text-[10px]">{fieldsList.find(i => i.id === f)?.label || f}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {solicitation.accessRequestedDocuments && solicitation.accessRequestedDocuments.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground">Anexos solicitados:</p>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {solicitation.accessRequestedDocuments.map((d: string) => (
-                              <Badge key={d} variant="secondary" className="text-[10px]">{docsList.find(i => i.id === d)?.label || d}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <Button 
-                      className="w-full" 
-                      onClick={handleGrantAccess}
-                      disabled={updateStatusMutation.isPending}
-                      data-testid="button-grant-access"
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Conceder Acesso para Edição
-                    </Button>
-                  </>
-                ) : solicitation.accessGranted ? (
-                  <Button 
-                    variant="secondary" 
-                    className="w-full" 
-                    onClick={handleRevokeAccess}
-                    disabled={updateStatusMutation.isPending}
-                    data-testid="button-revoke-access"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Revogar Acesso para Edição
-                  </Button>
-                ) : null}
-              </CardContent>
-            </Card>
-          )}
-
           <Card className="flex flex-col h-[500px]">
             <CardHeader className="flex-shrink-0 py-3 border-b bg-muted/30">
               <CardTitle className="text-lg font-bold flex items-center justify-between gap-2">
