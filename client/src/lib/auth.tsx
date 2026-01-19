@@ -50,6 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const data = await res.json();
     setUser(data);
+    // Force a small delay or refetch to ensure the state is fully synchronized before navigation
+    await fetchUser();
   };
 
   const logout = async () => {

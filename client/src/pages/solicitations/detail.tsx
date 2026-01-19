@@ -747,7 +747,7 @@ export default function SolicitationDetailPage() {
             </Card>
           )}
 
-          {isAutoescola && (
+          {isAutoescola && !isFinalized && (
             <div className="space-y-3">
               {solicitation.accessGranted ? (
                 <Link href={`/solicitations/${solicitation.id}/edit`}>
