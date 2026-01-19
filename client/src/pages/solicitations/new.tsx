@@ -14,6 +14,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { apiRequest } from "@/lib/queryClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function removeAccents(str: string): string {
   return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -228,6 +238,8 @@ export default function NewSolicitationPage() {
 
   const [cpfError, setCpfError] = useState<string | null>(null);
   const [isValidatingCpf, setIsValidatingCpf] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<SolicitationFormData | null>(null);
 
   const validateCpfUnique = async (cpf: string) => {
     const cleanCpf = cpf.replace(/\D/g, "");
@@ -345,8 +357,17 @@ export default function NewSolicitationPage() {
       return;
     }
     
-    const documentsArray = Object.values(files).filter((f): f is FileUpload => f !== null);
-    createMutation.mutate({ ...data, documents: documentsArray });
+    setPendingFormData(data);
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmSubmit = () => {
+    if (pendingFormData) {
+      const documentsArray = Object.values(files).filter((f): f is FileUpload => f !== null);
+      createMutation.mutate({ ...pendingFormData, documents: documentsArray });
+    }
+    setShowConfirmDialog(false);
+    setPendingFormData(null);
   };
 
   return (
@@ -585,18 +606,9 @@ export default function NewSolicitationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Identidade *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-identidade">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {IDENTIDADE_OPTIONS.map((id) => (
-                          <SelectItem key={id} value={id}>{id}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <UppercaseInput placeholder="NUMERO DA IDENTIDADE" {...field} data-testid="input-rg" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -1015,6 +1027,26 @@ export default function NewSolicitationPage() {
           </div>
         </form>
       </Form>
+
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Criação de Solicitação</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Você conferiu todos os dados informados?</p>
+              <p className="font-medium text-foreground">
+                Atenção: Após a criação da solicitação, só será possível alterar algum dado solicitando ACESSO PARA CORREÇÃO ao Detran.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-confirm">Revisar Dados</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSubmit} data-testid="button-confirm-submit">
+              Confirmar e Enviar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
