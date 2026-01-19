@@ -105,6 +105,13 @@ export const chatMessages = pgTable("chat_messages", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const chatReadStatus = pgTable("chat_read_status", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  solicitationId: varchar("solicitation_id").notNull().references(() => solicitations.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  lastReadAt: timestamp("last_read_at").notNull().defaultNow(),
+});
+
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),

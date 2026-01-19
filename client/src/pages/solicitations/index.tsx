@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/status-badge";
 import { Link } from "wouter";
-import { FileText, Plus, Search, Filter, Calendar } from "lucide-react";
+import { FileText, Plus, Search, Filter, Calendar, MessageSquare } from "lucide-react";
 import type { SolicitationWithDetails } from "@shared/schema";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -22,6 +22,15 @@ export default function SolicitationsPage() {
   const { data: solicitations, isLoading } = useQuery<SolicitationWithDetails[]>({
     queryKey: ["/api/solicitations"],
   });
+
+  const { data: unreadCounts } = useQuery<{ solicitationId: string; unreadCount: number }[]>({
+    queryKey: ["/api/chat/unread-counts"],
+    refetchInterval: 10000,
+  });
+
+  const getUnreadCount = (solicitationId: string) => {
+    return unreadCounts?.find(u => u.solicitationId === solicitationId)?.unreadCount || 0;
+  };
 
   const filteredSolicitations = solicitations?.filter((s) => {
     const matchesSearch =
@@ -150,6 +159,14 @@ export default function SolicitationsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {getUnreadCount(solicitation.id) > 0 && (
+                        <div className="relative" data-testid={`chat-unread-${solicitation.id}`}>
+                          <MessageSquare className="w-5 h-5 text-primary" />
+                          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                            {getUnreadCount(solicitation.id) > 99 ? "99+" : getUnreadCount(solicitation.id)}
+                          </span>
+                        </div>
+                      )}
                       <TypeBadge type={solicitation.type as any} />
                       <StatusBadge status={solicitation.status as any} />
                     </div>

@@ -1,5 +1,5 @@
 import {
-  users, drivingSchools, conductors, solicitations, documents, chatMessages, auditLogs, requiredDocuments,
+  users, drivingSchools, conductors, solicitations, documents, chatMessages, auditLogs, requiredDocuments, chatReadStatus,
   type User, type InsertUser, type DrivingSchool, type InsertDrivingSchool,
   type Conductor, type InsertConductor, type Solicitation, type InsertSolicitation,
   type Document, type InsertDocument, type ChatMessage, type InsertChatMessage,
@@ -39,6 +39,9 @@ export interface IStorage {
 
   getChatMessages(solicitationId: string): Promise<ChatMessageWithSender[]>;
   createChatMessage(data: InsertChatMessage): Promise<ChatMessage>;
+
+  getUnreadCounts(userId: string): Promise<{ solicitationId: string; unreadCount: number }[]>;
+  markMessagesAsRead(solicitationId: string, userId: string): Promise<void>;
 
   createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(): Promise<AuditLog[]>;
@@ -233,6 +236,51 @@ export class DatabaseStorage implements IStorage {
   async createChatMessage(data: InsertChatMessage): Promise<ChatMessage> {
     const [message] = await db.insert(chatMessages).values(data).returning();
     return message;
+  }
+
+  async getUnreadCounts(userId: string): Promise<{ solicitationId: string; unreadCount: number }[]> {
+    const result = await db.execute(sql`
+      SELECT 
+        cm.solicitation_id as "solicitationId",
+        COUNT(*) as "unreadCount"
+      FROM chat_messages cm
+      LEFT JOIN chat_read_status crs 
+        ON crs.solicitation_id = cm.solicitation_id 
+        AND crs.user_id = ${userId}
+      WHERE cm.sender_id != ${userId}
+        AND (crs.last_read_at IS NULL OR cm.created_at > crs.last_read_at)
+      GROUP BY cm.solicitation_id
+    `);
+    return result.rows.map((r: any) => ({
+      solicitationId: r.solicitationId,
+      unreadCount: parseInt(r.unreadCount, 10),
+    }));
+  }
+
+  async markMessagesAsRead(solicitationId: string, userId: string): Promise<void> {
+    const existing = await db
+      .select()
+      .from(chatReadStatus)
+      .where(and(
+        eq(chatReadStatus.solicitationId, solicitationId),
+        eq(chatReadStatus.userId, userId)
+      ));
+    
+    if (existing.length > 0) {
+      await db
+        .update(chatReadStatus)
+        .set({ lastReadAt: new Date() })
+        .where(and(
+          eq(chatReadStatus.solicitationId, solicitationId),
+          eq(chatReadStatus.userId, userId)
+        ));
+    } else {
+      await db.insert(chatReadStatus).values({
+        solicitationId,
+        userId,
+        lastReadAt: new Date(),
+      });
+    }
   }
 
   async createAuditLog(data: InsertAuditLog): Promise<AuditLog> {

@@ -408,7 +408,17 @@ export async function registerRoutes(
   app.get("/api/solicitations/:id/messages", requireAuth, async (req, res) => {
     try {
       const messages = await storage.getChatMessages(req.params.id);
+      await storage.markMessagesAsRead(req.params.id, req.user!.id);
       res.json(messages);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/chat/unread-counts", requireAuth, async (req, res) => {
+    try {
+      const counts = await storage.getUnreadCounts(req.user!.id);
+      res.json(counts);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
