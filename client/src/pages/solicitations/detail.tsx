@@ -229,7 +229,7 @@ export default function SolicitationDetailPage() {
     { id: "nomeCompleto", label: "Nome Completo" },
     { id: "nomeMae", label: "Nome da Mãe" },
     { id: "nomePai", label: "Nome do Pai" },
-    { id: "rg", label: "RG" },
+    { id: "rg", label: "RG / Órgão Emissor" },
     { id: "cpf", label: "CPF" },
     { id: "endereco", label: "Endereço" },
     { id: "contato", label: "Contato" },

@@ -219,6 +219,33 @@ export default function SolicitationEditPage() {
                   <FormMessage />
                 </FormItem>
               )} />
+              <FormField control={form.control} name="orgaoEmissor" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Órgão Emissor</FormLabel>
+                  <FormControl><Input {...field} disabled={!isFieldEnabled('rg')} className="uppercase" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="ufEmissor" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>UF Emissor</FormLabel>
+                  <FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEnabled('rg')}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a UF" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {UF_OPTIONS.map(uf => (
+                          <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
               {/* Add more fields as needed following the same pattern */}
             </CardContent>
           </Card>
