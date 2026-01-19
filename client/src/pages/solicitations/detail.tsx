@@ -619,35 +619,29 @@ export default function SolicitationDetailPage() {
 
           {canEdit && !isFinalized && (
             <Card>
-              <CardHeader>
-                <CardTitle>Ações do Operador</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Ações</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2">
                 <Button 
-                  className="w-full justify-start h-auto py-3 bg-green-600 hover:bg-green-700 text-white" 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white" 
                   onClick={handleCadastrado}
                   disabled={updateStatusMutation.isPending}
                   data-testid="button-approve"
                 >
-                  <CheckCircle2 className="w-5 h-5 mr-2" />
-                  <div>
-                    <div className="font-bold">CADASTRADO</div>
-                    <div className="text-xs opacity-90">Aprovar solicitação e finalizar</div>
-                  </div>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Cadastrado
                 </Button>
 
                 <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
                   <DialogTrigger asChild>
                     <Button 
                       variant="outline" 
-                      className="w-full justify-start h-auto py-3 border-orange-500 text-orange-600 hover:bg-orange-50"
+                      className="w-full border-orange-500 text-orange-600 hover:bg-orange-50"
                       data-testid="button-set-pending"
                     >
-                      <AlertTriangle className="w-5 h-5 mr-2" />
-                      <div>
-                        <div className="font-bold text-orange-600">PENDENTE</div>
-                        <div className="text-xs text-orange-600/80">Solicitar correções do chat</div>
-                      </div>
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Pendente
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -672,21 +666,56 @@ export default function SolicitationDetailPage() {
 
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start h-auto py-3 border-destructive text-destructive hover:bg-destructive/5"
+                  className="w-full border-destructive text-destructive hover:bg-destructive/5"
                   onClick={() => updateStatusMutation.mutate({ status: "reprovada", sendChatNotification: true })}
                   disabled={updateStatusMutation.isPending}
                   data-testid="button-reject"
                 >
-                  <XCircle className="w-5 h-5 mr-2" />
-                  <div>
-                    <div className="font-bold">REPROVADA</div>
-                    <div className="text-xs opacity-90">Reprovar permanentemente</div>
-                  </div>
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Reprovada
                 </Button>
 
                 <Separator className="my-2" />
                 
-                {solicitation.accessGranted ? (
+                {(solicitation.accessRequestedFields?.length ?? 0) > 0 || (solicitation.accessRequestedDocuments?.length ?? 0) > 0 ? (
+                  <>
+                    <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-300 dark:border-orange-800">
+                      <p className="text-sm font-bold flex items-center gap-2 mb-2 text-orange-700 dark:text-orange-400">
+                        <AlertTriangle className="w-4 h-4" />
+                        Pedido de Acesso Pendente
+                      </p>
+                      {solicitation.accessRequestedFields && solicitation.accessRequestedFields.length > 0 && (
+                        <div className="mb-2">
+                          <p className="text-xs font-medium text-muted-foreground">Campos solicitados:</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {solicitation.accessRequestedFields.map((f: string) => (
+                              <Badge key={f} variant="secondary" className="text-[10px]">{fieldsList.find(i => i.id === f)?.label || f}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {solicitation.accessRequestedDocuments && solicitation.accessRequestedDocuments.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground">Anexos solicitados:</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {solicitation.accessRequestedDocuments.map((d: string) => (
+                              <Badge key={d} variant="secondary" className="text-[10px]">{docsList.find(i => i.id === d)?.label || d}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <Button 
+                      className="w-full" 
+                      onClick={handleGrantAccess}
+                      disabled={updateStatusMutation.isPending}
+                      data-testid="button-grant-access"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Conceder Acesso para Edição
+                    </Button>
+                  </>
+                ) : solicitation.accessGranted ? (
                   <Button 
                     variant="secondary" 
                     className="w-full" 
@@ -694,48 +723,9 @@ export default function SolicitationDetailPage() {
                     disabled={updateStatusMutation.isPending}
                     data-testid="button-revoke-access"
                   >
+                    <XCircle className="w-4 h-4 mr-2" />
                     Revogar Acesso para Edição
                   </Button>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    className="w-full" 
-                    onClick={handleGrantAccess}
-                    disabled={updateStatusMutation.isPending}
-                    data-testid="button-grant-access"
-                  >
-                    Conceder Acesso para Edição
-                  </Button>
-                )}
-                
-                {(solicitation.accessRequestedFields?.length ?? 0) > 0 || (solicitation.accessRequestedDocuments?.length ?? 0) > 0 ? (
-                  <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-300 dark:border-orange-800">
-                    <p className="text-sm font-bold flex items-center gap-2 mb-2 text-orange-700 dark:text-orange-400">
-                      <AlertTriangle className="w-4 h-4" />
-                      Pedido de Acesso Pendente
-                    </p>
-                    {solicitation.accessRequestedFields && solicitation.accessRequestedFields.length > 0 && (
-                      <div className="mb-2">
-                        <p className="text-xs font-medium text-muted-foreground">Campos solicitados:</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {solicitation.accessRequestedFields.map((f: string) => (
-                            <Badge key={f} variant="secondary" className="text-[10px]">{fieldsList.find(i => i.id === f)?.label || f}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {solicitation.accessRequestedDocuments && solicitation.accessRequestedDocuments.length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground">Anexos solicitados:</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {solicitation.accessRequestedDocuments.map((d: string) => (
-                            <Badge key={d} variant="secondary" className="text-[10px]">{docsList.find(i => i.id === d)?.label || d}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-2 italic">Use o botão acima para conceder o acesso.</p>
-                  </div>
                 ) : null}
               </CardContent>
             </Card>
