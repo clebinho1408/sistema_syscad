@@ -64,13 +64,21 @@ const TIPO_LOGRADOURO_OPTIONS = [
   "RUA", "AVENIDA", "ALAMEDA", "TRAVESSA", "PRACA", "RODOVIA", "ESTRADA", "LARGO", "VIA", "OUTRO"
 ];
 
+const SEXO_OPTIONS = ["MASCULINO", "FEMININO"];
+const TIPO_DOCUMENTO_OPTIONS = ["RG", "CNH", "PASSAPORTE", "CTPS", "RNE"];
+
 const solicitationSchema = z.object({
   type: z.enum(["novo_cadastro", "alteracao_dados", "atualizacao", "regularizacao"]),
   cpf: z.string().min(11, "CPF inválido").transform(toUpperWithoutAccents),
   nomeCompleto: z.string().min(2, "Nome é obrigatório").transform(toUpperWithoutAccents),
+  nomeSocial: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
+  filiacaoAfetiva1: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
+  filiacaoAfetiva2: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
+  sexo: z.string().optional(),
   nomeMae: z.string().min(2, "Nome da mãe é obrigatório").transform(toUpperWithoutAccents),
   nomePai: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   nacionalidade: z.string().min(2, "Nacionalidade é obrigatória").transform(toUpperWithoutAccents),
+  tipoDocumento: z.string().optional(),
   rg: z.string().min(5, "RG é obrigatório").transform(toUpperWithoutAccents),
   orgaoEmissor: z.string().min(2, "Órgão emissor é obrigatório").transform(toUpperWithoutAccents),
   ufEmissor: z.string().min(2, "UF é obrigatória"),
@@ -83,17 +91,18 @@ const solicitationSchema = z.object({
     const date = parseDateLocal(val);
     return calculateAge(date) >= 18;
   }, "O candidato deve ter pelo menos 18 anos completos"),
-  cidadeNascimento: z.string().min(2, "Cidade é obrigatória").transform(toUpperWithoutAccents),
   ufNascimento: z.string().min(2, "UF é obrigatória"),
+  cidadeNascimento: z.string().min(2, "Cidade é obrigatória").transform(toUpperWithoutAccents),
   cep: z.string().min(8, "CEP é obrigatório").transform(toUpperWithoutAccents),
   tipoLogradouro: z.string().min(2, "Tipo de logradouro é obrigatório").transform(toUpperWithoutAccents),
   logradouro: z.string().min(2, "Logradouro é obrigatório").transform(toUpperWithoutAccents),
   numero: z.string().min(1, "Número é obrigatório").transform(toUpperWithoutAccents),
   complemento: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   bairro: z.string().min(2, "Bairro é obrigatório").transform(toUpperWithoutAccents),
-  cidade: z.string().min(2, "Cidade é obrigatória").transform(toUpperWithoutAccents),
   uf: z.string().min(2, "UF é obrigatória"),
+  cidade: z.string().min(2, "Cidade é obrigatória").transform(toUpperWithoutAccents),
   telefone1: z.string().min(10, "Telefone é obrigatório").transform(toUpperWithoutAccents),
+  dddCelular: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   telefone2: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
   email: z.string().email("E-mail inválido"),
 });
@@ -131,28 +140,58 @@ export default function NewSolicitationPage() {
       type: "novo_cadastro",
       cpf: "",
       nomeCompleto: "",
+      nomeSocial: "",
+      filiacaoAfetiva1: "",
+      filiacaoAfetiva2: "",
+      sexo: "",
       nomeMae: "",
       nomePai: "",
       nacionalidade: "BRASILEIRA",
+      tipoDocumento: "",
       rg: "",
       orgaoEmissor: "",
       ufEmissor: "",
       dataNascimento: "",
-      cidadeNascimento: "",
       ufNascimento: "",
+      cidadeNascimento: "",
       cep: "",
       tipoLogradouro: "",
       logradouro: "",
       numero: "",
       complemento: "",
       bairro: "",
-      cidade: "",
       uf: "",
+      cidade: "",
       telefone1: "",
+      dddCelular: "",
       telefone2: "",
       email: "",
     },
   });
+
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
+
+  const fetchAddressByCep = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, "");
+    if (cleanCep.length !== 8) return;
+
+    setIsLoadingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+      
+      if (!data.erro) {
+        form.setValue("logradouro", toUpperWithoutAccents(data.logradouro || ""));
+        form.setValue("bairro", toUpperWithoutAccents(data.bairro || ""));
+        form.setValue("cidade", toUpperWithoutAccents(data.localidade || ""));
+        form.setValue("uf", data.uf || "");
+      }
+    } catch {
+      console.error("Erro ao buscar CEP");
+    } finally {
+      setIsLoadingCep(false);
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: SolicitationFormData & { documents: FileUpload[] }) => {
@@ -310,6 +349,67 @@ export default function NewSolicitationPage() {
               />
               <FormField
                 control={form.control}
+                name="nomeSocial"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-3">
+                    <FormLabel>Nome Social</FormLabel>
+                    <FormControl>
+                      <UppercaseInput placeholder="NOME SOCIAL (OPCIONAL)" {...field} data-testid="input-nome-social" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="filiacaoAfetiva1"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Filiação Afetiva 1</FormLabel>
+                    <FormControl>
+                      <UppercaseInput placeholder="NOME COMPLETO" {...field} data-testid="input-filiacao1" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="filiacaoAfetiva2"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-1">
+                    <FormLabel>Filiação Afetiva 2</FormLabel>
+                    <FormControl>
+                      <UppercaseInput placeholder="NOME COMPLETO" {...field} data-testid="input-filiacao2" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="sexo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sexo</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-sexo">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SEXO_OPTIONS.map((sexo) => (
+                          <SelectItem key={sexo} value={sexo}>{sexo}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="nomeMae"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
@@ -325,7 +425,7 @@ export default function NewSolicitationPage() {
                 control={form.control}
                 name="nomePai"
                 render={({ field }) => (
-                  <FormItem className="md:col-span-1">
+                  <FormItem className="md:col-span-3">
                     <FormLabel>Nome do Pai</FormLabel>
                     <FormControl>
                       <UppercaseInput placeholder="NOME COMPLETO DO PAI" {...field} data-testid="input-pai" />
@@ -349,45 +449,19 @@ export default function NewSolicitationPage() {
               />
               <FormField
                 control={form.control}
-                name="dataNascimento"
+                name="tipoDocumento"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Data de Nascimento *</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} data-testid="input-nascimento" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="cidadeNascimento"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cidade de Nascimento *</FormLabel>
-                    <FormControl>
-                      <UppercaseInput placeholder="CIDADE" {...field} data-testid="input-cidade-nasc" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="ufNascimento"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>UF Nascimento *</FormLabel>
+                    <FormLabel>Tipo de Documento</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger data-testid="select-uf-nasc">
-                          <SelectValue placeholder="UF" />
+                        <SelectTrigger data-testid="select-tipo-documento">
+                          <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {UF_OPTIONS.map((uf) => (
-                          <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                        {TIPO_DOCUMENTO_OPTIONS.map((tipo) => (
+                          <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -443,6 +517,54 @@ export default function NewSolicitationPage() {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="dataNascimento"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Nascimento *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="input-nascimento" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="ufNascimento"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>UF Nascimento *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-uf-nasc">
+                          <SelectValue placeholder="UF" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {UF_OPTIONS.map((uf) => (
+                          <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="cidadeNascimento"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cidade de Nascimento *</FormLabel>
+                    <FormControl>
+                      <UppercaseInput placeholder="CIDADE" {...field} data-testid="input-cidade-nasc" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 
@@ -459,7 +581,20 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>CEP *</FormLabel>
                     <FormControl>
-                      <UppercaseInput placeholder="00000-000" {...field} data-testid="input-cep" />
+                      <div className="relative">
+                        <UppercaseInput 
+                          placeholder="00000-000" 
+                          {...field} 
+                          data-testid="input-cep"
+                          onBlur={(e) => {
+                            field.onBlur();
+                            fetchAddressByCep(e.target.value);
+                          }}
+                        />
+                        {isLoadingCep && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -541,19 +676,6 @@ export default function NewSolicitationPage() {
               />
               <FormField
                 control={form.control}
-                name="cidade"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>Cidade *</FormLabel>
-                    <FormControl>
-                      <UppercaseInput placeholder="CIDADE" {...field} data-testid="input-cidade" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="uf"
                 render={({ field }) => (
                   <FormItem>
@@ -570,6 +692,19 @@ export default function NewSolicitationPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="cidade"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Cidade *</FormLabel>
+                    <FormControl>
+                      <UppercaseInput placeholder="CIDADE" {...field} data-testid="input-cidade" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -598,6 +733,19 @@ export default function NewSolicitationPage() {
               />
               <FormField
                 control={form.control}
+                name="dddCelular"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>DDD Telefone Celular</FormLabel>
+                    <FormControl>
+                      <UppercaseInput placeholder="00" {...field} data-testid="input-ddd-celular" maxLength={2} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="telefone2"
                 render={({ field }) => (
                   <FormItem>
@@ -613,7 +761,7 @@ export default function NewSolicitationPage() {
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="md:col-span-3">
                     <FormLabel>E-mail *</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="email@exemplo.com" {...field} data-testid="input-email" />
