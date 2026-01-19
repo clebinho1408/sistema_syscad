@@ -280,11 +280,11 @@ export async function registerRoutes(
 
   app.patch("/api/solicitations/:id/status", requireAuth, requireRole("operador", "admin"), async (req, res) => {
     try {
-      const { status, justificativa, observacoesExternas } = req.body;
+      const { status, justificativa, observacoesExternas, sendChatNotification } = req.body;
       
       const solicitation = await storage.getSolicitation(req.params.id);
       if (!solicitation) {
-        return res.status(404).json({ message: "Solicitação não encontrada" });
+        return res.status(404).json({ message: "Solicitacao nao encontrada" });
       }
 
       const updateData: any = { status, operadorId: req.user!.id };
@@ -292,6 +292,26 @@ export async function registerRoutes(
       if (observacoesExternas) updateData.observacoesExternas = observacoesExternas;
 
       const updated = await storage.updateSolicitation(req.params.id, updateData);
+
+      const statusLabels: Record<string, string> = {
+        "aprovada": "CADASTRADO",
+        "pendente_correcao": "PENDENTE",
+        "em_analise": "EM ANALISE",
+        "reprovada": "REPROVADA",
+      };
+
+      if (sendChatNotification) {
+        const statusLabel = statusLabels[status] || status.toUpperCase();
+        let notificationMessage = `[SISTEMA] Status alterado para: ${statusLabel}`;
+        if (observacoesExternas) {
+          notificationMessage += `\nMotivo: ${observacoesExternas}`;
+        }
+        await storage.createChatMessage({
+          solicitationId: req.params.id,
+          senderId: req.user!.id,
+          message: notificationMessage,
+        });
+      }
 
       await storage.createAuditLog({
         userId: req.user!.id,

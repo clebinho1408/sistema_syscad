@@ -30,10 +30,48 @@ import {
   Download,
   Upload,
   Loader2,
+  Copy,
+  Check,
+  ClipboardList,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { SolicitationWithDetails, ChatMessage, Document } from "@shared/schema";
+
+function CopyableField({
+  label,
+  value,
+  fieldName,
+  copiedFields,
+  onCopy,
+}: {
+  label: string;
+  value: string;
+  fieldName: string;
+  copiedFields: Set<string>;
+  onCopy: (fieldName: string, value: string) => void;
+}) {
+  const isCopied = copiedFields.has(fieldName);
+  return (
+    <div className={`p-3 border rounded-lg transition-colors ${isCopied ? 'bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700' : ''}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="font-medium truncate">{value}</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onCopy(fieldName, value)}
+          className={isCopied ? 'text-green-600' : ''}
+          data-testid={`button-copy-${fieldName}`}
+        >
+          {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function SolicitationDetailPage() {
   const [, params] = useRoute("/solicitations/:id");
@@ -41,9 +79,11 @@ export default function SolicitationDetailPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newMessage, setNewMessage] = useState("");
-  const [rejectReason, setRejectReason] = useState("");
+  const [pendingReason, setPendingReason] = useState("");
   const [externalObservation, setExternalObservation] = useState("");
-  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
+  const [isDataDialogOpen, setIsDataDialogOpen] = useState(false);
+  const [copiedFields, setCopiedFields] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: solicitation, isLoading } = useQuery<SolicitationWithDetails>({
@@ -77,16 +117,17 @@ export default function SolicitationDetailPage() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async (data: { status: string; justificativa?: string; observacoesExternas?: string }) => {
+    mutationFn: async (data: { status: string; justificativa?: string; observacoesExternas?: string; sendChatNotification?: boolean }) => {
       return apiRequest("PATCH", `/api/solicitations/${params?.id}/status`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/solicitations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ title: "Status atualizado com sucesso!" });
-      setIsRejectDialogOpen(false);
-      setRejectReason("");
+      setIsPendingDialogOpen(false);
+      setPendingReason("");
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
@@ -108,24 +149,34 @@ export default function SolicitationDetailPage() {
     sendMessageMutation.mutate(newMessage);
   };
 
-  const handleApprove = () => {
-    updateStatusMutation.mutate({ status: "aprovada" });
+  const handleCadastrado = () => {
+    updateStatusMutation.mutate({ status: "aprovada", sendChatNotification: true });
   };
 
-  const handleReject = () => {
-    if (!rejectReason.trim()) {
-      toast({ title: "Justificativa obrigatória", variant: "destructive" });
+  const handlePendente = () => {
+    if (!pendingReason.trim()) {
+      toast({ title: "Motivo da pendencia obrigatorio", variant: "destructive" });
       return;
     }
-    updateStatusMutation.mutate({ status: "reprovada", justificativa: rejectReason });
+    updateStatusMutation.mutate({ status: "pendente_correcao", observacoesExternas: pendingReason, sendChatNotification: true });
   };
 
   const handleRequestCorrection = () => {
     if (!externalObservation.trim()) {
-      toast({ title: "Observação obrigatória", variant: "destructive" });
+      toast({ title: "Observacao obrigatoria", variant: "destructive" });
       return;
     }
-    updateStatusMutation.mutate({ status: "pendente_correcao", observacoesExternas: externalObservation });
+    updateStatusMutation.mutate({ status: "pendente_correcao", observacoesExternas: externalObservation, sendChatNotification: true });
+  };
+
+  const copyToClipboard = async (fieldName: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedFields(prev => new Set(prev).add(fieldName));
+      toast({ title: "Copiado!" });
+    } catch (err) {
+      toast({ title: "Erro ao copiar", variant: "destructive" });
+    }
   };
 
   if (isLoading) {
@@ -215,17 +266,114 @@ export default function SolicitationDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">RG</p>
-                <p className="font-medium">{solicitation.conductor.rg} - {solicitation.conductor.orgaoEmissor}/{solicitation.conductor.ufEmissor}</p>
+                <p className="font-medium">{solicitation.conductor.rg}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Orgao Emissor / UF</p>
+                <p className="font-medium">{solicitation.conductor.orgaoEmissor}/{solicitation.conductor.ufEmissor}</p>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
-                Endereço
+                Endereco
               </CardTitle>
+              {canEdit && (
+                <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" data-testid="button-open-full-data">
+                      <ClipboardList className="w-4 h-4 mr-2" />
+                      Abrir Dados Completos
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Dados Completos do Candidato</DialogTitle>
+                      <DialogDescription>
+                        Clique no icone ao lado de cada campo para copiar
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 md:grid-cols-2 py-4">
+                      <CopyableField
+                        label="Cidade de Nascimento"
+                        value={solicitation.conductor.cidadeNascimento}
+                        fieldName="cidadeNascimento"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                      <CopyableField
+                        label="UF Nascimento"
+                        value={solicitation.conductor.ufNascimento}
+                        fieldName="ufNascimento"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                      <CopyableField
+                        label="CEP"
+                        value={solicitation.conductor.cep}
+                        fieldName="cep"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                      <CopyableField
+                        label="Tipo de Logradouro"
+                        value={solicitation.conductor.tipoLogradouro}
+                        fieldName="tipoLogradouro"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                      <CopyableField
+                        label="Logradouro"
+                        value={solicitation.conductor.logradouro}
+                        fieldName="logradouro"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                      <CopyableField
+                        label="Numero"
+                        value={solicitation.conductor.numero}
+                        fieldName="numero"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                      <CopyableField
+                        label="Complemento"
+                        value={solicitation.conductor.complemento || "-"}
+                        fieldName="complemento"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                      <CopyableField
+                        label="Bairro"
+                        value={solicitation.conductor.bairro}
+                        fieldName="bairro"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                      <CopyableField
+                        label="Cidade"
+                        value={solicitation.conductor.cidade}
+                        fieldName="cidade"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                      <CopyableField
+                        label="UF"
+                        value={solicitation.conductor.uf}
+                        fieldName="uf"
+                        copiedFields={copiedFields}
+                        onCopy={copyToClipboard}
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsDataDialogOpen(false)}>Fechar</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </CardHeader>
             <CardContent>
               <p className="font-medium">
@@ -373,68 +521,45 @@ export default function SolicitationDetailPage() {
           {canEdit && !isFinalized && (
             <Card>
               <CardHeader>
-                <CardTitle>Ações</CardTitle>
-                <CardDescription>Atualize o status da solicitação</CardDescription>
+                <CardTitle>Acoes</CardTitle>
+                <CardDescription>Atualize o status da solicitacao</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full" onClick={handleApprove} disabled={updateStatusMutation.isPending} data-testid="button-approve">
+                <Button variant="default" className="w-full" onClick={handleCadastrado} disabled={updateStatusMutation.isPending} data-testid="button-cadastrado">
                   <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Aprovar
+                  Cadastrado
                 </Button>
 
-                <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+                <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="destructive" className="w-full" data-testid="button-reject-trigger">
-                      <XCircle className="w-4 h-4 mr-2" />
-                      Reprovar
+                    <Button variant="secondary" className="w-full" data-testid="button-pendente-trigger">
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Pendente
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Reprovar Solicitação</DialogTitle>
+                      <DialogTitle>Marcar como Pendente</DialogTitle>
                       <DialogDescription>
-                        Informe a justificativa para a reprovação. Esta informação será visível para a autoescola.
+                        Informe o motivo da pendencia. Esta informacao sera visivel para a autoescola.
                       </DialogDescription>
                     </DialogHeader>
                     <Textarea
-                      placeholder="Digite a justificativa..."
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
+                      placeholder="Digite o motivo da pendencia..."
+                      value={pendingReason}
+                      onChange={(e) => setPendingReason(e.target.value)}
                       rows={4}
-                      data-testid="input-reject-reason"
+                      data-testid="input-pending-reason"
                     />
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>Cancelar</Button>
-                      <Button variant="destructive" onClick={handleReject} disabled={updateStatusMutation.isPending}>
+                      <Button variant="outline" onClick={() => setIsPendingDialogOpen(false)}>Cancelar</Button>
+                      <Button variant="default" onClick={handlePendente} disabled={updateStatusMutation.isPending}>
                         {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Confirmar Reprovação
+                        Confirmar Pendencia
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Solicitar Correção</p>
-                  <Textarea
-                    placeholder="Descreva o que precisa ser corrigido..."
-                    value={externalObservation}
-                    onChange={(e) => setExternalObservation(e.target.value)}
-                    rows={3}
-                    data-testid="input-correction"
-                  />
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleRequestCorrection}
-                    disabled={updateStatusMutation.isPending || !externalObservation.trim()}
-                    data-testid="button-request-correction"
-                  >
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    Solicitar Correção
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           )}
