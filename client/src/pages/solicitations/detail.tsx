@@ -709,9 +709,9 @@ export default function SolicitationDetailPage() {
                 )}
                 
                 {(solicitation.accessRequestedFields?.length ?? 0) > 0 || (solicitation.accessRequestedDocuments?.length ?? 0) > 0 ? (
-                  <div className="mt-4 p-3 bg-muted rounded-lg border border-primary/20">
-                    <p className="text-sm font-bold flex items-center gap-2 mb-2">
-                      <AlertTriangle className="w-4 h-4 text-primary" />
+                  <div className="mt-4 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-300 dark:border-orange-800">
+                    <p className="text-sm font-bold flex items-center gap-2 mb-2 text-orange-700 dark:text-orange-400">
+                      <AlertTriangle className="w-4 h-4" />
                       Pedido de Acesso Pendente
                     </p>
                     {solicitation.accessRequestedFields && solicitation.accessRequestedFields.length > 0 && (
@@ -734,13 +734,7 @@ export default function SolicitationDetailPage() {
                         </div>
                       </div>
                     )}
-                    <Button 
-                      className="w-full mt-3 h-8 text-xs" 
-                      onClick={handleGrantAccess}
-                      disabled={updateStatusMutation.isPending}
-                    >
-                      Aprovar Acesso solicitado
-                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2 italic">Use o botão acima para conceder o acesso.</p>
                   </div>
                 ) : null}
               </CardContent>
@@ -759,7 +753,7 @@ export default function SolicitationDetailPage() {
               ) : (
                 <Dialog open={isAccessRequestOpen} onOpenChange={setIsAccessRequestOpen}>
                   <DialogTrigger asChild>
-                    <Button className="w-full" variant="outline" data-testid="button-request-access">
+                    <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="button-request-access">
                       <AlertTriangle className="w-4 h-4 mr-2" />
                       SOLICITAR ACESSO PARA CORREÇÃO
                     </Button>
@@ -771,12 +765,12 @@ export default function SolicitationDetailPage() {
                         Selecione os campos e anexos que deseja corrigir. O DETRAN analisará seu pedido.
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Campos Cadastrais</h4>
-                        <div className="flex flex-wrap gap-2">
+                    <div className="space-y-6 py-4">
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold border-b pb-2">Campos Cadastrais</h4>
+                        <div className="grid grid-cols-2 gap-3">
                           {fieldsList.map((field) => (
-                            <div key={field.id} className="flex items-center space-x-2 bg-muted p-2 rounded-md">
+                            <div key={field.id} className="flex items-center space-x-2 bg-muted p-3 rounded-md">
                               <Checkbox 
                                 id={`field-${field.id}`}
                                 checked={requestedFields.includes(field.id)}
@@ -792,11 +786,11 @@ export default function SolicitationDetailPage() {
                           ))}
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Anexos/Documentos</h4>
-                        <div className="flex flex-wrap gap-2">
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold border-b pb-2">Anexos/Documentos</h4>
+                        <div className="grid grid-cols-1 gap-3">
                           {docsList.map((doc) => (
-                            <div key={doc.id} className="flex items-center space-x-2 bg-muted p-2 rounded-md">
+                            <div key={doc.id} className="flex items-center space-x-2 bg-muted p-3 rounded-md">
                               <Checkbox 
                                 id={`doc-${doc.id}`}
                                 checked={requestedDocs.includes(doc.id)}
