@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,9 +21,7 @@ const registerSchema = z.object({
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido"),
-  cnpj: z.string().min(14, "CNPJ inválido"),
-  razaoSocial: z.string().min(2, "Razão social obrigatória"),
-  nomeFantasia: z.string().min(2, "Nome fantasia obrigatório"),
+  nomeAutoescola: z.string().min(2, "Nome da autoescola é obrigatório"),
   cep: z.string().min(8, "CEP inválido"),
   logradouro: z.string().min(2, "Logradouro obrigatório"),
   numero: z.string().min(1, "Número obrigatório"),
@@ -32,7 +29,6 @@ const registerSchema = z.object({
   bairro: z.string().min(2, "Bairro obrigatório"),
   cidade: z.string().min(2, "Cidade obrigatória"),
   uf: z.string().length(2, "UF deve ter 2 caracteres"),
-  responsavelLegal: z.string().min(2, "Responsável legal obrigatório"),
   telefone: z.string().min(10, "Telefone inválido"),
 });
 
@@ -51,9 +47,7 @@ export default function DrivingSchoolsPage() {
       password: "",
       name: "",
       email: "",
-      cnpj: "",
-      razaoSocial: "",
-      nomeFantasia: "",
+      nomeAutoescola: "",
       cep: "",
       logradouro: "",
       numero: "",
@@ -61,7 +55,6 @@ export default function DrivingSchoolsPage() {
       bairro: "",
       cidade: "",
       uf: "",
-      responsavelLegal: "",
       telefone: "",
     },
   });
@@ -103,9 +96,7 @@ export default function DrivingSchoolsPage() {
   };
 
   const filteredSchools = schools?.filter((s) =>
-    s.nomeFantasia.toLowerCase().includes(search.toLowerCase()) ||
-    s.razaoSocial.toLowerCase().includes(search.toLowerCase()) ||
-    s.cnpj.includes(search)
+    s.nome.toLowerCase().includes(search.toLowerCase())
   );
 
   const ufs = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
@@ -135,6 +126,23 @@ export default function DrivingSchoolsPage() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Identificação Principal</h3>
+                  <FormField
+                    control={form.control}
+                    name="nomeAutoescola"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Autoescola</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome da Autoescola" {...field} data-testid="input-new-autoescola" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <div className="space-y-4">
                   <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Dados de Acesso</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -196,69 +204,15 @@ export default function DrivingSchoolsPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Dados da Empresa</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="cnpj"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CNPJ</FormLabel>
-                          <FormControl>
-                            <Input placeholder="00.000.000/0000-00" {...field} data-testid="input-new-cnpj" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="telefone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Telefone</FormLabel>
-                          <FormControl>
-                            <Input placeholder="(00) 00000-0000" {...field} data-testid="input-new-telefone" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Contato</h3>
                   <FormField
                     control={form.control}
-                    name="razaoSocial"
+                    name="telefone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Razão Social</FormLabel>
+                        <FormLabel>Telefone</FormLabel>
                         <FormControl>
-                          <Input placeholder="Razão Social da Empresa" {...field} data-testid="input-new-razao" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="nomeFantasia"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome Fantasia</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nome Fantasia" {...field} data-testid="input-new-fantasia" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="responsavelLegal"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Responsável Legal</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nome do Responsável Legal" {...field} data-testid="input-new-responsavel" />
+                          <Input placeholder="(00) 00000-0000" {...field} data-testid="input-new-telefone" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -399,7 +353,7 @@ export default function DrivingSchoolsPage() {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, razão social ou CNPJ..."
+              placeholder="Buscar por nome..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -442,13 +396,11 @@ export default function DrivingSchoolsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium">{school.nomeFantasia}</p>
+                      <p className="font-medium">{school.nome}</p>
                       <Badge variant={school.isActive ? "default" : "secondary"}>
                         {school.isActive ? "Ativa" : "Bloqueada"}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">{school.razaoSocial}</p>
-                    <p className="text-sm text-muted-foreground">CNPJ: {school.cnpj}</p>
                     <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5" />
@@ -492,8 +444,8 @@ export default function DrivingSchoolsPage() {
                           </DialogTitle>
                           <DialogDescription>
                             {school.isActive
-                              ? `Tem certeza que deseja bloquear a autoescola "${school.nomeFantasia}"? Ela não poderá criar novas solicitações.`
-                              : `Tem certeza que deseja desbloquear a autoescola "${school.nomeFantasia}"?`}
+                              ? `Tem certeza que deseja bloquear a autoescola "${school.nome}"? Ela não poderá criar novas solicitações.`
+                              : `Tem certeza que deseja desbloquear a autoescola "${school.nome}"?`}
                           </DialogDescription>
                         </DialogHeader>
                         <DialogFooter>

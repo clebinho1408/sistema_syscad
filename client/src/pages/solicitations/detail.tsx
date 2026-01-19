@@ -359,13 +359,8 @@ export default function SolicitationDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <p className="font-medium">{solicitation.drivingSchool.nomeFantasia}</p>
-              <p className="text-sm text-muted-foreground">{solicitation.drivingSchool.razaoSocial}</p>
-              <p className="text-sm text-muted-foreground">CNPJ: {solicitation.drivingSchool.cnpj}</p>
+              <p className="font-medium">{solicitation.drivingSchool.nome}</p>
               <Separator className="my-3" />
-              <p className="text-sm">
-                <span className="text-muted-foreground">Responsável:</span> {solicitation.drivingSchool.responsavelLegal}
-              </p>
               <p className="text-sm">
                 <span className="text-muted-foreground">Telefone:</span> {solicitation.drivingSchool.telefone}
               </p>

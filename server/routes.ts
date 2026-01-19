@@ -92,13 +92,18 @@ export async function registerRoutes(
     try {
       const {
         username, password, name, email,
-        cnpj, razaoSocial, nomeFantasia, cep, logradouro, numero,
-        complemento, bairro, cidade, uf, responsavelLegal, telefone
+        nomeAutoescola, cep, logradouro, numero,
+        complemento, bairro, cidade, uf, telefone
       } = req.body;
 
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(400).json({ message: "Usuário já existe" });
+      }
+
+      const existingSchool = await storage.getDrivingSchoolByName(nomeAutoescola);
+      if (existingSchool) {
+        return res.status(400).json({ message: "Já existe uma autoescola com este nome" });
       }
 
       const hashedPassword = await hashPassword(password);
@@ -113,9 +118,7 @@ export async function registerRoutes(
 
       await storage.createDrivingSchool({
         userId: user.id,
-        cnpj,
-        razaoSocial,
-        nomeFantasia,
+        nome: nomeAutoescola,
         cep,
         logradouro,
         numero,
@@ -123,7 +126,6 @@ export async function registerRoutes(
         bairro,
         cidade,
         uf,
-        responsavelLegal,
         telefone,
         email,
         isActive: true,
@@ -134,7 +136,7 @@ export async function registerRoutes(
         action: "create",
         entity: "driving_school",
         entityId: user.id,
-        details: `Autoescola cadastrada pelo admin: ${nomeFantasia}`,
+        details: `Autoescola cadastrada pelo admin: ${nomeAutoescola}`,
       });
 
       const { password: _, ...userWithoutPassword } = user;

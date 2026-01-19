@@ -21,9 +21,7 @@ export const users = pgTable("users", {
 export const drivingSchools = pgTable("driving_schools", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
-  cnpj: text("cnpj").notNull().unique(),
-  razaoSocial: text("razao_social").notNull(),
-  nomeFantasia: text("nome_fantasia").notNull(),
+  nome: text("nome").notNull().unique(),
   cep: text("cep").notNull(),
   logradouro: text("logradouro").notNull(),
   numero: text("numero").notNull(),
@@ -31,7 +29,6 @@ export const drivingSchools = pgTable("driving_schools", {
   bairro: text("bairro").notNull(),
   cidade: text("cidade").notNull(),
   uf: text("uf").notNull(),
-  responsavelLegal: text("responsavel_legal").notNull(),
   telefone: text("telefone").notNull(),
   email: text("email").notNull(),
   isActive: boolean("is_active").notNull().default(true),

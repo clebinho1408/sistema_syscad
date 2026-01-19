@@ -141,7 +141,7 @@ export default function SolicitationsPage() {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1 flex-wrap">
                         <span>CPF: {solicitation.conductor.cpf}</span>
                         {user?.role !== "autoescola" && (
-                          <span>Autoescola: {solicitation.drivingSchool.nomeFantasia}</span>
+                          <span>Autoescola: {solicitation.drivingSchool.nome}</span>
                         )}
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3.5 h-3.5" />

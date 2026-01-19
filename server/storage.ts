@@ -18,6 +18,7 @@ export interface IStorage {
 
   getDrivingSchool(id: string): Promise<DrivingSchool | undefined>;
   getDrivingSchoolByUserId(userId: string): Promise<DrivingSchool | undefined>;
+  getDrivingSchoolByName(nome: string): Promise<DrivingSchool | undefined>;
   getDrivingSchools(): Promise<DrivingSchool[]>;
   createDrivingSchool(data: InsertDrivingSchool): Promise<DrivingSchool>;
   updateDrivingSchool(id: string, data: Partial<InsertDrivingSchool>): Promise<DrivingSchool | undefined>;
@@ -79,6 +80,11 @@ export class DatabaseStorage implements IStorage {
 
   async getDrivingSchoolByUserId(userId: string): Promise<DrivingSchool | undefined> {
     const [school] = await db.select().from(drivingSchools).where(eq(drivingSchools.userId, userId));
+    return school || undefined;
+  }
+
+  async getDrivingSchoolByName(nome: string): Promise<DrivingSchool | undefined> {
+    const [school] = await db.select().from(drivingSchools).where(eq(drivingSchools.nome, nome));
     return school || undefined;
   }
 
@@ -277,7 +283,7 @@ export class DatabaseStorage implements IStorage {
       const school = await this.getDrivingSchool(schoolId);
       if (school) {
         bySchool.push({
-          name: school.nomeFantasia,
+          name: school.nome,
           count: allSolicitations.filter(s => s.drivingSchoolId === schoolId).length,
         });
       }
