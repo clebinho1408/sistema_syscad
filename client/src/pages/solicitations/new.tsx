@@ -610,66 +610,62 @@ export default function NewSolicitationPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Documentos</CardTitle>
-              <CardDescription>Anexe os documentos obrigatórios (PDF, JPG, PNG - máx. 5MB cada)</CardDescription>
+              <CardTitle>Documentação</CardTitle>
+              <CardDescription>Anexe os documentos necessários digitalizados</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="border-2 border-dashed rounded-lg p-6 text-center">
                 <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Arraste arquivos ou clique para selecionar
-                </p>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  style={{ position: "relative" }}
-                  data-testid="input-files"
-                />
-                <Button type="button" variant="outline" className="mt-4" onClick={() => document.querySelector<HTMLInputElement>('[data-testid="input-files"]')?.click()}>
-                  Selecionar Arquivos
-                </Button>
+                <div className="mt-2 space-y-2 text-center">
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Anexos Obrigatórios:
+                  </p>
+                  <ul className="text-xs text-muted-foreground inline-block text-left list-disc list-inside">
+                    <li>Renach Assinado</li>
+                    <li>Documento de Identificação</li>
+                    <li>Comprovante de Residência</li>
+                    <li>Outros Documentos/Declarações (Opcional)</li>
+                  </ul>
+                </div>
+                <input type="file" multiple className="hidden" id="file-upload" onChange={handleFileChange} />
+                <label htmlFor="file-upload" className="mt-4 block text-sm font-medium text-primary cursor-pointer hover:underline">
+                  Clique para selecionar arquivos
+                </label>
               </div>
 
               {files.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Arquivos selecionados:</p>
-                  <div className="grid gap-2">
-                    {files.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-3 p-3 bg-muted rounded-lg"
-                      >
-                        <FileIcon className="w-5 h-5 text-primary flex-shrink-0" />
-                        <span className="flex-1 text-sm truncate">{file.name}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeFile(index)}
-                          data-testid={`button-remove-file-${index}`}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
+                  {files.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 border rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileIcon className="w-4 h-4 text-primary flex-shrink-0" />
+                        <span className="text-sm truncate">{file.name}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase">{file.type.split('/')[1]}</span>
                       </div>
-                    ))}
-                  </div>
+                      <Button variant="ghost" size="icon" onClick={() => removeFile(index)} className="h-8 w-8 text-destructive">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <div className="flex gap-4">
-            <Link href="/solicitations" className="flex-1">
-              <Button type="button" variant="outline" className="w-full" data-testid="button-cancel">
-                Cancelar
-              </Button>
+          <div className="flex justify-end gap-4 pb-12">
+            <Link href="/solicitations">
+              <Button variant="outline" type="button">Cancelar</Button>
             </Link>
-            <Button type="submit" className="flex-1" disabled={createMutation.isPending} data-testid="button-submit">
-              {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Enviar Solicitação
+            <Button type="submit" disabled={createMutation.isPending} data-testid="button-submit">
+              {createMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                "Criar Solicitação"
+              )}
             </Button>
           </div>
         </form>

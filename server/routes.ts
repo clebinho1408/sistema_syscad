@@ -431,10 +431,32 @@ export async function registerRoutes(
         accessGranted: false
       });
       
+      const labels: Record<string, string> = {
+        nomeCompleto: "Nome Completo",
+        nomeMae: "Nome da Mãe",
+        nomePai: "Nome do Pai",
+        nacionalidade: "Nacionalidade",
+        dataNascimento: "Data de Nascimento",
+        cidadeNascimento: "Cidade de Nascimento",
+        ufNascimento: "UF Nascimento",
+        rg: "RG/Órgão",
+        endereco: "Endereço",
+        telefone1: "Telefone 1",
+        telefone2: "Telefone 2",
+        email: "E-mail",
+        renach_assinado: "Renach Assinado",
+        documento_identificacao: "Documento de Identificação",
+        comprovante_residencia: "Comprovante de Residência",
+        outros: "Outros Documentos/Declarações"
+      };
+
+      const fieldLabels = fields.map((f: string) => labels[f] || f);
+      const docLabels = documents.map((d: string) => labels[d] || d);
+
       await storage.createChatMessage({
         solicitationId: req.params.id,
         senderId: req.user!.id,
-        message: `[PEDIDO DE ACESSO] A autoescola solicitou acesso para corrigir campos (${fields.join(", ")}) e anexos (${documents.join(", ")})`,
+        message: `[PEDIDO DE ACESSO] A autoescola solicitou acesso para corrigir campos (${fieldLabels.join(", ")}) e anexos (${docLabels.join(", ")})`,
       });
 
       res.json(updated);

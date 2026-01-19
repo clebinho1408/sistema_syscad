@@ -229,16 +229,22 @@ export default function SolicitationDetailPage() {
     { id: "nomeCompleto", label: "Nome Completo" },
     { id: "nomeMae", label: "Nome da Mãe" },
     { id: "nomePai", label: "Nome do Pai" },
+    { id: "nacionalidade", label: "Nacionalidade" },
+    { id: "dataNascimento", label: "Data de Nascimento" },
+    { id: "cidadeNascimento", label: "Cidade de Nascimento" },
+    { id: "ufNascimento", label: "UF Nascimento" },
     { id: "rg", label: "RG / Órgão Emissor" },
-    { id: "cpf", label: "CPF" },
     { id: "endereco", label: "Endereço" },
-    { id: "contato", label: "Contato" },
+    { id: "telefone1", label: "Telefone 1" },
+    { id: "telefone2", label: "Telefone 2" },
+    { id: "email", label: "E-mail" },
   ];
 
   const docsList = [
+    { id: "renach_assinado", label: "Renach Assinado" },
     { id: "documento_identificacao", label: "Documento de Identificação" },
     { id: "comprovante_residencia", label: "Comprovante de Residência" },
-    { id: "outros", label: "Outros Documentos" },
+    { id: "outros", label: "Outros Documentos/Declarações" },
   ];
 
   const handleGrantAccess = () => {
@@ -323,7 +329,7 @@ export default function SolicitationDetailPage() {
                           <CopyableField label="Cidade de Nascimento" value={solicitation.conductor.cidadeNascimento} fieldName="cidadeNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="UF Nascimento" value={solicitation.conductor.ufNascimento} fieldName="ufNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="RG" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                          <CopyableField label="Órgão Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="orgaoEmissorUf" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                          <CopyableField label="Órgão Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         </div>
                       </div>
                       <Separator />
@@ -506,65 +512,291 @@ export default function SolicitationDetailPage() {
                   <div className="text-center">
                     <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                     <p>Visualização não disponível para este tipo de arquivo.</p>
-                    <a href={selectedDoc?.fileData} download={selectedDoc?.fileName} className="text-primary hover:underline mt-2 inline-block">
-                      Baixar arquivo
-                    </a>
                   </div>
                 )}
               </div>
+              <DialogFooter className="p-4 border-t gap-2 sm:justify-center">
+                <Button 
+                  variant={selectedDoc?.isLegible === true ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isLegible: true } })}
+                  disabled={!canEdit || isFinalized}
+                >
+                  Legível
+                </Button>
+                <Button 
+                  variant={selectedDoc?.isLegible === false ? "destructive" : "outline"} 
+                  size="sm"
+                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isLegible: false } })}
+                  disabled={!canEdit || isFinalized}
+                >
+                  Ilegível
+                </Button>
+                <Separator orientation="vertical" className="h-8 hidden sm:block" />
+                <Button 
+                  variant={selectedDoc?.isValid === true ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isValid: true } })}
+                  disabled={!canEdit || isFinalized}
+                >
+                  Válido
+                </Button>
+                <Button 
+                  variant={selectedDoc?.isValid === false ? "destructive" : "outline"} 
+                  size="sm"
+                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isValid: false } })}
+                  disabled={!canEdit || isFinalized}
+                >
+                  Inválido
+                </Button>
+                <Separator orientation="vertical" className="h-8 hidden sm:block" />
+                <Button 
+                  variant={selectedDoc?.isCompatible === true ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isCompatible: true } })}
+                  disabled={!canEdit || isFinalized}
+                >
+                  Compatível
+                </Button>
+                <Button 
+                  variant={selectedDoc?.isCompatible === false ? "destructive" : "outline"} 
+                  size="sm"
+                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isCompatible: false } })}
+                  disabled={!canEdit || isFinalized}
+                >
+                  Incompatível
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
+        </div>
 
-          {isAutoescola && isPendente && !solicitation.accessGranted && (
-            <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/30">
+        <div className="space-y-6">
+          <Card className="flex flex-col h-[500px]">
+            <CardHeader className="flex-shrink-0">
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5" />
+                Chat Interno
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
+              {messages?.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  className={`flex flex-col ${msg.senderId === user?.id ? "items-end" : "items-start"}`}
+                >
+                  <div className={`max-w-[85%] p-3 rounded-lg ${
+                    msg.senderId === user?.id 
+                      ? "bg-primary text-primary-foreground rounded-tr-none" 
+                      : msg.message.startsWith("[SISTEMA]") || msg.message.startsWith("[PEDIDO DE ACESSO]")
+                        ? "bg-muted text-muted-foreground w-full text-center text-xs"
+                        : "bg-muted rounded-tl-none"
+                  }`}>
+                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                    <p className="text-[10px] mt-1 opacity-70">
+                      {format(new Date(msg.createdAt), "HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </CardContent>
+            <CardFooter className="p-4 pt-0 flex-shrink-0">
+              <form onSubmit={handleSendMessage} className="flex w-full gap-2">
+                <Input 
+                  placeholder="Digite uma mensagem..." 
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  disabled={isFinalized}
+                  data-testid="input-chat-message"
+                />
+                <Button type="submit" size="icon" disabled={isFinalized || sendMessageMutation.isPending} data-testid="button-send-message">
+                  {sendMessageMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </Button>
+              </form>
+            </CardFooter>
+          </Card>
+
+          {canEdit && !isFinalized && (
+            <Card>
               <CardHeader>
-                <CardTitle className="text-blue-700 dark:text-blue-400 text-lg flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  Solicitar Acesso para Edição
-                </CardTitle>
-                <CardDescription>
-                  Se você precisa corrigir algum campo ou anexo, solicite acesso ao DETRAN.
-                </CardDescription>
+                <CardTitle>Ações do Operador</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
+                <Button 
+                  className="w-full justify-start h-auto py-3 bg-green-600 hover:bg-green-700 text-white" 
+                  onClick={handleCadastrado}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-approve"
+                >
+                  <CheckCircle2 className="w-5 h-5 mr-2" />
+                  <div>
+                    <div className="font-bold">CADASTRADO</div>
+                    <div className="text-xs opacity-90">Aprovar solicitação e finalizar</div>
+                  </div>
+                </Button>
+
+                <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start h-auto py-3 border-orange-500 text-orange-600 hover:bg-orange-50"
+                      data-testid="button-set-pending"
+                    >
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      <div>
+                        <div className="font-bold text-orange-600">PENDENTE</div>
+                        <div className="text-xs text-orange-600/80">Solicitar correções do chat</div>
+                      </div>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Solicitar Correções</DialogTitle>
+                      <DialogDescription>
+                        Informe os motivos da pendência. Isso será enviado para a autoescola.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Textarea 
+                      placeholder="Descreva as correções necessárias..." 
+                      value={pendingReason}
+                      onChange={(e) => setPendingReason(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsPendingDialogOpen(false)}>Cancelar</Button>
+                      <Button onClick={handlePendente} disabled={updateStatusMutation.isPending}>Enviar Pendência</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start h-auto py-3 border-destructive text-destructive hover:bg-destructive/5"
+                  onClick={() => updateStatusMutation.mutate({ status: "reprovada", sendChatNotification: true })}
+                  disabled={updateStatusMutation.isPending}
+                  data-testid="button-reject"
+                >
+                  <XCircle className="w-5 h-5 mr-2" />
+                  <div>
+                    <div className="font-bold">REPROVADA</div>
+                    <div className="text-xs opacity-90">Reprovar permanentemente</div>
+                  </div>
+                </Button>
+
+                <Separator className="my-2" />
+                
+                {solicitation.accessGranted ? (
+                  <Button 
+                    variant="secondary" 
+                    className="w-full" 
+                    onClick={handleRevokeAccess}
+                    disabled={updateStatusMutation.isPending}
+                    data-testid="button-revoke-access"
+                  >
+                    Revogar Acesso para Edição
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={handleGrantAccess}
+                    disabled={updateStatusMutation.isPending}
+                    data-testid="button-grant-access"
+                  >
+                    Conceder Acesso para Edição
+                  </Button>
+                )}
+                
+                {(solicitation.accessRequestedFields?.length > 0 || solicitation.accessRequestedDocuments?.length > 0) && (
+                  <div className="mt-4 p-3 bg-muted rounded-lg border border-primary/20">
+                    <p className="text-sm font-bold flex items-center gap-2 mb-2">
+                      <AlertTriangle className="w-4 h-4 text-primary" />
+                      Pedido de Acesso Pendente
+                    </p>
+                    {solicitation.accessRequestedFields && solicitation.accessRequestedFields.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-xs font-medium text-muted-foreground">Campos solicitados:</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {solicitation.accessRequestedFields.map((f: string) => (
+                            <Badge key={f} variant="secondary" className="text-[10px]">{fieldsList.find(i => i.id === f)?.label || f}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {solicitation.accessRequestedDocuments && solicitation.accessRequestedDocuments.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground">Anexos solicitados:</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {solicitation.accessRequestedDocuments.map((d: string) => (
+                            <Badge key={d} variant="secondary" className="text-[10px]">{docsList.find(i => i.id === d)?.label || d}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <Button 
+                      className="w-full mt-3 h-8 text-xs" 
+                      onClick={handleGrantAccess}
+                      disabled={updateStatusMutation.isPending}
+                    >
+                      Aprovar Acesso solicitado
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {isAutoescola && (
+            <div className="space-y-3">
+              {solicitation.accessGranted ? (
+                <Link href={`/solicitations/${solicitation.id}/edit`}>
+                  <Button className="w-full bg-orange-600 hover:bg-orange-700" data-testid="button-go-to-edit">
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    ACESSAR EDIÇÃO LIBERADA
+                  </Button>
+                </Link>
+              ) : (
                 <Dialog open={isAccessRequestOpen} onOpenChange={setIsAccessRequestOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full border-blue-300 text-blue-700 hover:bg-blue-100">
-                      Escolher Campos e Anexos
+                    <Button className="w-full" variant="outline" data-testid="button-request-access">
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      SOLICITAR ACESSO PARA CORREÇÃO
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>O que deseja corrigir?</DialogTitle>
+                      <DialogTitle>Solicitar Acesso para Edição</DialogTitle>
                       <DialogDescription>
-                        Selecione os itens que precisam de ajuste.
+                        Selecione os campos e anexos que deseja corrigir. O DETRAN analisará seu pedido.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium">Campos de Dados</h4>
-                        <div className="grid grid-cols-2 gap-2">
-                          {fieldsList.map(field => (
-                            <div key={field.id} className="flex items-center space-x-2">
+                        <h4 className="text-sm font-medium">Campos Cadastrais</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {fieldsList.map((field) => (
+                            <div key={field.id} className="flex items-center space-x-2 bg-muted p-2 rounded-md">
                               <Checkbox 
-                                id={`field-${field.id}`} 
+                                id={`field-${field.id}`}
                                 checked={requestedFields.includes(field.id)}
                                 onCheckedChange={(checked) => {
                                   if (checked) setRequestedFields([...requestedFields, field.id]);
                                   else setRequestedFields(requestedFields.filter(f => f !== field.id));
                                 }}
                               />
-                              <label htmlFor={`field-${field.id}`} className="text-xs">{field.label}</label>
+                              <label htmlFor={`field-${field.id}`} className="text-sm font-medium leading-none cursor-pointer">
+                                {field.label}
+                              </label>
                             </div>
                           ))}
                         </div>
                       </div>
-                      <Separator />
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium">Anexos/Documentos</h4>
-                        <div className="space-y-2">
-                          {docsList.map(doc => (
-                            <div key={doc.id} className="flex items-center space-x-2">
+                        <div className="flex flex-wrap gap-2">
+                          {docsList.map((doc) => (
+                            <div key={doc.id} className="flex items-center space-x-2 bg-muted p-2 rounded-md">
                               <Checkbox 
                                 id={`doc-${doc.id}`}
                                 checked={requestedDocs.includes(doc.id)}
@@ -573,7 +805,9 @@ export default function SolicitationDetailPage() {
                                   else setRequestedDocs(requestedDocs.filter(d => d !== doc.id));
                                 }}
                               />
-                              <label htmlFor={`doc-${doc.id}`} className="text-xs">{doc.label}</label>
+                              <label htmlFor={`doc-${doc.id}`} className="text-sm font-medium leading-none cursor-pointer">
+                                {doc.label}
+                              </label>
                             </div>
                           ))}
                         </div>
@@ -585,230 +819,14 @@ export default function SolicitationDetailPage() {
                         onClick={() => requestAccessMutation.mutate({ fields: requestedFields, documents: requestedDocs })}
                         disabled={requestAccessMutation.isPending || (requestedFields.length === 0 && requestedDocs.length === 0)}
                       >
-                        {requestAccessMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Solicitar Acesso
+                        Enviar Solicitação
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-              </CardContent>
-            </Card>
-          )}
-
-          {canEdit && isPendente && solicitation.accessRequestedFields && solicitation.accessRequestedFields.length > 0 && (
-            <Card className="border-orange-200 dark:border-orange-800 bg-orange-50/30">
-              <CardHeader>
-                <CardTitle className="text-orange-700 dark:text-orange-400 text-lg flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  Pedido de Acesso Pendente
-                </CardTitle>
-                <CardDescription>
-                  A autoescola solicitou acesso para corrigir os seguintes itens:
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-sm space-y-2">
-                  {solicitation.accessRequestedFields.length > 0 && (
-                    <p><strong>Campos:</strong> {solicitation.accessRequestedFields.map(id => fieldsList.find(f => f.id === id)?.label).join(", ")}</p>
-                  )}
-                  {solicitation.accessRequestedDocuments && solicitation.accessRequestedDocuments.length > 0 && (
-                    <p><strong>Anexos:</strong> {solicitation.accessRequestedDocuments.map(id => docsList.find(d => d.id === id)?.label).join(", ")}</p>
-                  )}
-                </div>
-                {!solicitation.accessGranted ? (
-                  <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleGrantAccess} disabled={updateStatusMutation.isPending}>
-                    {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Aprovar Pedido de Acesso
-                  </Button>
-                ) : (
-                  <Button className="w-full" variant="outline" onClick={handleRevokeAccess} disabled={updateStatusMutation.isPending}>
-                    {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Revogar Acesso Concedido
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {isAutoescola && solicitation.accessGranted && (
-            <Card className="border-green-200 dark:border-green-800 bg-green-50/30">
-              <CardHeader>
-                <CardTitle className="text-green-700 dark:text-green-400 text-lg flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  Acesso para Edição Liberado
-                </CardTitle>
-                <CardDescription>
-                  Você pode editar os campos solicitados e reenviar os documentos.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm mb-4">
-                  <strong>Itens liberados:</strong> {[...(solicitation.accessRequestedFields || []), ...(solicitation.accessRequestedDocuments || [])].map(id => {
-                    const field = fieldsList.find(f => f.id === id);
-                    const doc = docsList.find(d => d.id === id);
-                    return field?.label || doc?.label || id;
-                  }).join(", ")}
-                </p>
-                <Link href={`/solicitations/${solicitation.id}/edit`}>
-                  <Button className="w-full bg-green-600 hover:bg-green-700">
-                    <ClipboardList className="w-4 h-4 mr-2" />
-                    Iniciar Correções
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          )}
-
-          {solicitation.observacoesExternas && (
-            <Card className="border-amber-200 dark:border-amber-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                  <AlertTriangle className="w-5 h-5" />
-                  Observações do DETRAN
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>{solicitation.observacoesExternas}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {solicitation.justificativaReprovacao && (
-            <Card className="border-red-200 dark:border-red-800">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                  <XCircle className="w-5 h-5" />
-                  Justificativa da Reprovação
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p>{solicitation.justificativaReprovacao}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="w-5 h-5" />
-                Autoescola
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="font-medium">{solicitation.drivingSchool.nome}</p>
-              <Separator className="my-3" />
-              <p className="text-sm">
-                <span className="text-muted-foreground">Telefone:</span> {solicitation.drivingSchool.telefone}
-              </p>
-              <p className="text-sm">
-                <span className="text-muted-foreground">E-mail:</span> {solicitation.drivingSchool.email}
-              </p>
-            </CardContent>
-          </Card>
-
-          {canEdit && !isFinalized && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Ações</CardTitle>
-                <CardDescription>Atualize o status da solicitação</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button variant="default" className="w-full" onClick={handleCadastrado} disabled={updateStatusMutation.isPending} data-testid="button-cadastrado">
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Cadastrado
-                </Button>
-
-                <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="secondary" className="w-full" data-testid="button-pendente-trigger">
-                      <AlertTriangle className="w-4 h-4 mr-2" />
-                      Pendente
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Marcar como Pendente</DialogTitle>
-                      <DialogDescription>
-                        Informe o motivo da pendência. Esta informação será visível para a autoescola.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Textarea
-                      placeholder="Digite o motivo da pendência..."
-                      value={pendingReason}
-                      onChange={(e) => setPendingReason(e.target.value)}
-                      rows={4}
-                      data-testid="input-pending-reason"
-                    />
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsPendingDialogOpen(false)}>Cancelar</Button>
-                      <Button variant="default" onClick={handlePendente} disabled={updateStatusMutation.isPending}>
-                        {updateStatusMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Confirmar Pendência
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card className="flex flex-col h-96">
-            <CardHeader className="flex-shrink-0">
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                Chat
-              </CardTitle>
-              <CardDescription>Comunicação sobre esta solicitação</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto space-y-3 mb-4">
-                {messages?.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`p-3 rounded-lg max-w-[85%] ${
-                      msg.senderId === user?.id
-                        ? "ml-auto bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    }`}
-                  >
-                    <p className="text-sm">{msg.message}</p>
-                    <p className="text-xs opacity-70 mt-1">
-                      {format(new Date(msg.createdAt), "HH:mm", { locale: ptBR })}
-                    </p>
-                  </div>
-                ))}
-                {(!messages || messages.length === 0) && (
-                  <p className="text-center text-muted-foreground text-sm py-8">
-                    Nenhuma mensagem ainda
-                  </p>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {!isFinalized && (
-                <form onSubmit={handleSendMessage} className="flex gap-2">
-                  <Input
-                    placeholder="Digite sua mensagem..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    className="flex-1"
-                    data-testid="input-message"
-                  />
-                  <Button type="submit" size="icon" disabled={sendMessageMutation.isPending} data-testid="button-send-message">
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </form>
               )}
-
-              {isFinalized && (
-                <p className="text-center text-sm text-muted-foreground py-2">
-                  Chat encerrado - Solicitação finalizada
-                </p>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>

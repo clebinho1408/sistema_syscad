@@ -162,7 +162,7 @@ export default function SolicitationEditPage() {
   const requestedFields = solicitation.accessRequestedFields || [];
   const requestedDocs = solicitation.accessRequestedDocuments || [];
 
-  const isFieldEnabled = (fieldId: string) => requestedFields.includes(fieldId) || requestedFields.includes('endereco') || requestedFields.includes('contato');
+  const isFieldEnabled = (fieldId: string) => requestedFields.includes(fieldId) || requestedFields.includes('endereco');
 
   const onSubmit = (data: EditFormData) => {
     updateMutation.mutate({ ...data, documents: newFiles });
@@ -205,13 +205,6 @@ export default function SolicitationEditPage() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="cpf" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>CPF</FormLabel>
-                  <FormControl><Input {...field} disabled={!isFieldEnabled('cpf')} className="uppercase" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
               <FormField control={form.control} name="rg" render={({ field }) => (
                 <FormItem>
                   <FormLabel>RG</FormLabel>
@@ -243,6 +236,68 @@ export default function SolicitationEditPage() {
                       </SelectContent>
                     </Select>
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="nacionalidade" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nacionalidade</FormLabel>
+                  <FormControl><Input {...field} disabled={!isFieldEnabled('nacionalidade')} className="uppercase" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="dataNascimento" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Data de Nascimento</FormLabel>
+                  <FormControl><Input type="date" {...field} disabled={!isFieldEnabled('dataNascimento')} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="cidadeNascimento" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cidade de Nascimento</FormLabel>
+                  <FormControl><Input {...field} disabled={!isFieldEnabled('cidadeNascimento')} className="uppercase" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="ufNascimento" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>UF Nascimento</FormLabel>
+                  <FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEnabled('ufNascimento')}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="UF" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {UF_OPTIONS.map(uf => (
+                          <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="telefone1" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone 1</FormLabel>
+                  <FormControl><Input {...field} disabled={!isFieldEnabled('telefone1')} className="uppercase" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="telefone2" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Telefone 2</FormLabel>
+                  <FormControl><Input {...field} disabled={!isFieldEnabled('telefone2')} className="uppercase" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="email" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>E-mail</FormLabel>
+                  <FormControl><Input type="email" {...field} disabled={!isFieldEnabled('email')} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
