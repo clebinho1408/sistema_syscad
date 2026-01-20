@@ -132,13 +132,17 @@ export default function SolicitationDetailPage() {
   });
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-    if (popupChatContainerRef.current) {
-      popupChatContainerRef.current.scrollTop = popupChatContainerRef.current.scrollHeight;
-    }
-  }, [messages]);
+    const scrollToBottom = () => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+      if (popupChatContainerRef.current) {
+        popupChatContainerRef.current.scrollTop = popupChatContainerRef.current.scrollHeight;
+      }
+    };
+    scrollToBottom();
+    requestAnimationFrame(scrollToBottom);
+  }, [messages, isChatPopupOpen]);
 
   useEffect(() => {
     if (messages && messages.length > previousMessagesCount.current) {
