@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/status-badge";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { FileText, Plus, Search, Filter, Calendar, MessageSquare } from "lucide-react";
 import type { SolicitationWithDetails } from "@shared/schema";
 import { format } from "date-fns";
@@ -15,6 +15,7 @@ import { ptBR } from "date-fns/locale";
 
 export default function SolicitationsPage() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -159,14 +160,24 @@ export default function SolicitationsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-wrap justify-end">
-                      <div className="relative" data-testid={`chat-icon-${solicitation.id}`}>
+                      <button
+                        type="button"
+                        className="relative p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                        data-testid={`chat-icon-${solicitation.id}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          navigate(`/solicitations/${solicitation.id}?openChat=true`);
+                        }}
+                        title="Abrir chat"
+                      >
                         <MessageSquare className="w-5 h-5 text-green-500" />
                         {getUnreadCount(solicitation.id) > 0 && (
-                          <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">
                             {getUnreadCount(solicitation.id) > 99 ? "99+" : getUnreadCount(solicitation.id)}
                           </span>
                         )}
-                      </div>
+                      </button>
                       <TypeBadge type={solicitation.type as any} />
                       <StatusBadge status={solicitation.status as any} />
                     </div>

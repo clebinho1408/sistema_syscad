@@ -424,6 +424,15 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/solicitations/:id/mark-read", requireAuth, async (req, res) => {
+    try {
+      await storage.markMessagesAsRead(req.params.id, req.user!.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/solicitations/:id/messages", requireAuth, async (req, res) => {
     try {
       const { message } = req.body;

@@ -99,6 +99,22 @@ export default function SolicitationDetailPage() {
   const previousMessagesCount = useRef<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("openChat") === "true") {
+      setIsChatPopupOpen(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isChatPopupOpen && params?.id) {
+      apiRequest("POST", `/api/solicitations/${params.id}/mark-read`, {}).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-counts"] });
+      });
+    }
+  }, [isChatPopupOpen, params?.id, queryClient]);
+
   const { data: solicitation, isLoading } = useQuery<SolicitationWithDetails>({
     queryKey: ["/api/solicitations", params?.id],
     enabled: !!params?.id,
