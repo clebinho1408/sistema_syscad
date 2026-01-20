@@ -260,7 +260,7 @@ export async function registerRoutes(
       const {
         type, cpf, nomeCompleto, nomeMae, nomePai, nacionalidade, rg, orgaoEmissor,
         ufEmissor, dataNascimento, cidadeNascimento, ufNascimento, cep, tipoLogradouro,
-        logradouro, numero, complemento, bairro, cidade, uf, telefone1, telefone2, email,
+        logradouro, numero, complemento, bairro, cidade, uf, telefone1, dddCelular, telefone2, email,
         documents: documentsList
       } = req.body;
 
@@ -285,6 +285,7 @@ export async function registerRoutes(
         cidade,
         uf,
         telefone1,
+        dddCelular: dddCelular || null,
         telefone2: telefone2 || null,
         email,
       });
