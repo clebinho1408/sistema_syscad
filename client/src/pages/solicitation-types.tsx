@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Pencil, Trash2, FileText, GripVertical, Loader2, Wrench } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, GripVertical, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { SolicitationType } from "@shared/schema";
 
@@ -64,24 +64,6 @@ export default function SolicitationTypesPage() {
     },
     onError: (error: any) => {
       toast({ title: "Erro ao atualizar tipo", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const fixTypesMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/admin/fix-solicitation-types", {});
-      return response.json();
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/solicitation-types"] });
-      if (data?.fixed?.length > 0) {
-        toast({ title: "Tipos corrigidos com sucesso", description: `${data.fixed.length} tipo(s) corrigido(s)` });
-      } else {
-        toast({ title: "Nenhum tipo precisava de correção" });
-      }
-    },
-    onError: (error: any) => {
-      toast({ title: "Erro ao corrigir tipos", description: error.message, variant: "destructive" });
     },
   });
 
@@ -161,15 +143,6 @@ export default function SolicitationTypesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => fixTypesMutation.mutate()}
-            disabled={fixTypesMutation.isPending}
-            data-testid="button-fix-types"
-          >
-            {fixTypesMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wrench className="w-4 h-4 mr-2" />}
-            Corrigir Tipos
-          </Button>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-create-type">
