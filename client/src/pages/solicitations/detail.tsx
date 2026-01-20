@@ -88,6 +88,8 @@ export default function SolicitationDetailPage() {
   const [externalObservation, setExternalObservation] = useState("");
   const [isPendingDialogOpen, setIsPendingDialogOpen] = useState(false);
   const [isDataDialogOpen, setIsDataDialogOpen] = useState(false);
+  const [isEnderecoDialogOpen, setIsEnderecoDialogOpen] = useState(false);
+  const [isContatoDialogOpen, setIsContatoDialogOpen] = useState(false);
   const [isAccessRequestOpen, setIsAccessRequestOpen] = useState(false);
   const [requestedFields, setRequestedFields] = useState<string[]>([]);
   const [requestedDocs, setRequestedDocs] = useState<string[]>([]);
@@ -733,19 +735,37 @@ export default function SolicitationDetailPage() {
                 <MapPin className="w-5 h-5" />
                 Endereço
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const enderecoCompleto = `${solicitation.conductor.tipoLogradouro} ${solicitation.conductor.logradouro}, ${solicitation.conductor.numero}${solicitation.conductor.complemento ? ` - ${solicitation.conductor.complemento}` : ''}, ${solicitation.conductor.bairro}, ${solicitation.conductor.cidade}/${solicitation.conductor.uf}, CEP: ${solicitation.conductor.cep}`;
-                  navigator.clipboard.writeText(enderecoCompleto);
-                  toast({ title: "Endereço copiado!" });
-                }}
-                data-testid="button-copy-endereco"
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copiar
-              </Button>
+              {canEdit && (
+                <Dialog open={isEnderecoDialogOpen} onOpenChange={setIsEnderecoDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" data-testid="button-open-endereco">
+                      <ClipboardList className="w-4 h-4 mr-2" />
+                      Abrir Endereço
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Endereço do Candidato</DialogTitle>
+                      <DialogDescription>
+                        Clique no ícone ao lado de cada campo para copiar
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 py-4">
+                      <CopyableField label="CEP" value={solicitation.conductor.cep} fieldName="cep" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      <CopyableField label="Tipo de Logradouro" value={solicitation.conductor.tipoLogradouro} fieldName="tipoLogradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      <CopyableField label="Logradouro" value={solicitation.conductor.logradouro} fieldName="logradouro" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      <CopyableField label="Número" value={solicitation.conductor.numero} fieldName="numero" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      <CopyableField label="Complemento" value={solicitation.conductor.complemento || "-"} fieldName="complemento" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      <CopyableField label="Bairro" value={solicitation.conductor.bairro} fieldName="bairro" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      <CopyableField label="Cidade" value={solicitation.conductor.cidade} fieldName="cidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      <CopyableField label="UF" value={solicitation.conductor.uf} fieldName="uf" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsEnderecoDialogOpen(false)}>Fechar</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </CardHeader>
             <CardContent>
               <p className="font-medium">
@@ -765,19 +785,35 @@ export default function SolicitationDetailPage() {
                 <Phone className="w-5 h-5" />
                 Contato
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const contatoCompleto = `${solicitation.conductor.telefone1 ? `Tel: ${solicitation.conductor.telefone1}, ` : ''}Cel: (${solicitation.conductor.dddCelular || ''}) ${solicitation.conductor.telefone2 || ''}, E-mail: ${solicitation.conductor.email}`;
-                  navigator.clipboard.writeText(contatoCompleto);
-                  toast({ title: "Contato copiado!" });
-                }}
-                data-testid="button-copy-contato"
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copiar
-              </Button>
+              {canEdit && (
+                <Dialog open={isContatoDialogOpen} onOpenChange={setIsContatoDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" data-testid="button-open-contato">
+                      <ClipboardList className="w-4 h-4 mr-2" />
+                      Abrir Contato
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Contato do Candidato</DialogTitle>
+                      <DialogDescription>
+                        Clique no ícone ao lado de cada campo para copiar
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 py-4">
+                      {solicitation.conductor.telefone1 && (
+                        <CopyableField label="Telefone" value={solicitation.conductor.telefone1} fieldName="telefone1" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      )}
+                      <CopyableField label="DDD Celular" value={solicitation.conductor.dddCelular || "-"} fieldName="dddCelular" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      <CopyableField label="Telefone Celular" value={solicitation.conductor.telefone2 || "-"} fieldName="telefone2" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                      <CopyableField label="E-mail" value={solicitation.conductor.email} fieldName="email" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsContatoDialogOpen(false)}>Fechar</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
               {solicitation.conductor.telefone1 && (
