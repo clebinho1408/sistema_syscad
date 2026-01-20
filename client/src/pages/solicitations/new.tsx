@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { apiRequest } from "@/lib/queryClient";
+import { BRAZILIAN_CITIES, COUNTRIES } from "@/lib/location-data";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -230,7 +231,7 @@ export default function NewSolicitationPage() {
       numero: "",
       complemento: "",
       bairro: "",
-      uf: "",
+      uf: "SC",
       cidade: "",
       telefone1: "",
       dddCelular: "",
@@ -267,6 +268,10 @@ export default function NewSolicitationPage() {
   };
 
   const [isLoadingCep, setIsLoadingCep] = useState(false);
+  const [customCidade, setCustomCidade] = useState<string>("");
+  const [customCidadeNascimento, setCustomCidadeNascimento] = useState<string>("");
+  const [showCustomCidade, setShowCustomCidade] = useState(false);
+  const [showCustomCidadeNascimento, setShowCustomCidadeNascimento] = useState(false);
 
   const fetchAddressByCep = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, "");
@@ -278,13 +283,19 @@ export default function NewSolicitationPage() {
       const data = await response.json();
       
       if (!data.erro) {
-        // Remove common street type prefixes (Rua, Avenida, etc) from the logradouro
         const streetName = data.logradouro ? data.logradouro.replace(/^(RUA|AVENIDA|AV|ALAMEDA|AL|TRAVESSA|TRV|PRACA|PRC|RODOVIA|ROD|ESTRADA|EST|LARGO|LRG|VIA)\s+/i, "") : "";
+        const uf = data.uf || "";
+        const cidade = toUpperWithoutAccents(data.localidade || "");
         
         form.setValue("logradouro", toUpperWithoutAccents(streetName));
         form.setValue("bairro", toUpperWithoutAccents(data.bairro || ""));
-        form.setValue("cidade", toUpperWithoutAccents(data.localidade || ""));
-        form.setValue("uf", data.uf || "");
+        form.setValue("uf", uf);
+        
+        const citiesForUf = BRAZILIAN_CITIES[uf] || [];
+        if (!citiesForUf.includes(cidade) && cidade) {
+          setCustomCidade(cidade);
+        }
+        form.setValue("cidade", cidade);
       }
     } catch {
       console.error("Erro ao buscar CEP");
@@ -672,7 +683,15 @@ export default function NewSolicitationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>UF Nascimento *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue("cidadeNascimento", "");
+                        setCustomCidadeNascimento("");
+                        setShowCustomCidadeNascimento(false);
+                      }} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-uf-nasc">
                           <SelectValue placeholder="UF" />
@@ -691,15 +710,74 @@ export default function NewSolicitationPage() {
               <FormField
                 control={form.control}
                 name="cidadeNascimento"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Local Nascimento *</FormLabel>
-                    <FormControl>
-                      <UppercaseInput placeholder="CIDADE" {...field} data-testid="input-cidade-nasc" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const ufNascimento = form.watch("ufNascimento");
+                  const isEstrangeiro = ufNascimento === "ESTRANGEIRO";
+                  const baseOptions = isEstrangeiro ? COUNTRIES : (BRAZILIAN_CITIES[ufNascimento] || []);
+                  const options = customCidadeNascimento && !baseOptions.includes(customCidadeNascimento)
+                    ? [customCidadeNascimento, ...baseOptions]
+                    : baseOptions;
+                  return (
+                    <FormItem>
+                      <FormLabel>Local Nascimento *</FormLabel>
+                      {showCustomCidadeNascimento ? (
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <UppercaseInput 
+                              placeholder={isEstrangeiro ? "DIGITE O PAÍS" : "DIGITE A CIDADE"} 
+                              value={field.value}
+                              onChange={(e) => {
+                                field.onChange(e.target.value);
+                                setCustomCidadeNascimento(e.target.value);
+                              }}
+                              data-testid="input-cidade-nasc-custom" 
+                            />
+                          </FormControl>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => {
+                              setShowCustomCidadeNascimento(false);
+                              field.onChange("");
+                            }}
+                            data-testid="button-cidade-nasc-custom-clear"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Select 
+                          onValueChange={(value) => {
+                            if (value === "__OUTRO__") {
+                              setShowCustomCidadeNascimento(true);
+                              field.onChange("");
+                            } else {
+                              field.onChange(value);
+                            }
+                          }} 
+                          value={field.value} 
+                          disabled={!ufNascimento}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-cidade-nasc">
+                              <SelectValue placeholder={isEstrangeiro ? "Selecione o país" : "Selecione a cidade"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {options.map((item) => (
+                              <SelectItem key={item} value={item}>{item}</SelectItem>
+                            ))}
+                            <SelectItem value="__OUTRO__" className="text-muted-foreground italic">
+                              {isEstrangeiro ? "Outro país..." : "Outra cidade..."}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </CardContent>
           </Card>
@@ -816,7 +894,15 @@ export default function NewSolicitationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>UF *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue("cidade", "");
+                        setCustomCidade("");
+                        setShowCustomCidade(false);
+                      }} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger data-testid="select-uf">
                           <SelectValue placeholder="UF" />
@@ -835,15 +921,73 @@ export default function NewSolicitationPage() {
               <FormField
                 control={form.control}
                 name="cidade"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>Cidade *</FormLabel>
-                    <FormControl>
-                      <UppercaseInput placeholder="CIDADE" {...field} data-testid="input-cidade" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const uf = form.watch("uf");
+                  const baseCities = BRAZILIAN_CITIES[uf] || [];
+                  const cities = customCidade && !baseCities.includes(customCidade) 
+                    ? [customCidade, ...baseCities] 
+                    : baseCities;
+                  return (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Cidade *</FormLabel>
+                      {showCustomCidade ? (
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <UppercaseInput 
+                              placeholder="DIGITE A CIDADE" 
+                              value={field.value}
+                              onChange={(e) => {
+                                field.onChange(e.target.value);
+                                setCustomCidade(e.target.value);
+                              }}
+                              data-testid="input-cidade-custom" 
+                            />
+                          </FormControl>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => {
+                              setShowCustomCidade(false);
+                              field.onChange("");
+                            }}
+                            data-testid="button-cidade-custom-clear"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Select 
+                          onValueChange={(value) => {
+                            if (value === "__OUTRO__") {
+                              setShowCustomCidade(true);
+                              field.onChange("");
+                            } else {
+                              field.onChange(value);
+                            }
+                          }} 
+                          value={field.value} 
+                          disabled={!uf}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-cidade">
+                              <SelectValue placeholder="Selecione a cidade" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {cities.map((city) => (
+                              <SelectItem key={city} value={city}>{city}</SelectItem>
+                            ))}
+                            <SelectItem value="__OUTRO__" className="text-muted-foreground italic">
+                              Outra cidade...
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </CardContent>
           </Card>
