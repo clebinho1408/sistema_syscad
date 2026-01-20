@@ -20,21 +20,31 @@ export default function SolicitationTypesPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<SolicitationType | null>(null);
-  const [formData, setFormData] = useState({ value: "", label: "", sortOrder: "0", isActive: true });
+  const [formData, setFormData] = useState({ label: "", sortOrder: "0", isActive: true });
 
   const { data: types, isLoading } = useQuery<SolicitationType[]>({
     queryKey: ["/api/solicitation-types"],
   });
 
+  const generateValue = (label: string): string => {
+    return label
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "");
+  };
+
   const createMutation = useMutation({
-    mutationFn: async (data: { value: string; label: string; sortOrder: string; isActive: boolean }) => {
-      return apiRequest("POST", "/api/solicitation-types", data);
+    mutationFn: async (data: { label: string; sortOrder: string; isActive: boolean }) => {
+      const value = generateValue(data.label);
+      return apiRequest("POST", "/api/solicitation-types", { ...data, value });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/solicitation-types"] });
       toast({ title: "Tipo criado com sucesso" });
       setIsCreateOpen(false);
-      setFormData({ value: "", label: "", sortOrder: "0", isActive: true });
+      setFormData({ label: "", sortOrder: "0", isActive: true });
     },
     onError: (error: any) => {
       toast({ title: "Erro ao criar tipo", description: error.message, variant: "destructive" });
@@ -72,8 +82,8 @@ export default function SolicitationTypesPage() {
   });
 
   const handleCreate = () => {
-    if (!formData.value || !formData.label) {
-      toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
+    if (!formData.label) {
+      toast({ title: "Preencha o nome do tipo", variant: "destructive" });
       return;
     }
     createMutation.mutate(formData);
@@ -82,7 +92,6 @@ export default function SolicitationTypesPage() {
   const handleEdit = (type: SolicitationType) => {
     setSelectedType(type);
     setFormData({
-      value: type.value,
       label: type.label,
       sortOrder: type.sortOrder,
       isActive: type.isActive,
@@ -148,17 +157,7 @@ export default function SolicitationTypesPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="value">Valor (identificador único)</Label>
-                <Input
-                  id="value"
-                  placeholder="ex: primeira_habilitacao"
-                  value={formData.value}
-                  onChange={(e) => setFormData({ ...formData, value: e.target.value.toLowerCase().replace(/\s+/g, "_") })}
-                  data-testid="input-type-value"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="label">Nome de Exibição</Label>
+                <Label htmlFor="label">Nome do Tipo</Label>
                 <Input
                   id="label"
                   placeholder="ex: Primeira Habilitação"
@@ -216,7 +215,6 @@ export default function SolicitationTypesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]">Ordem</TableHead>
-                <TableHead>Valor</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -231,7 +229,6 @@ export default function SolicitationTypesPage() {
                       {type.sortOrder}
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{type.value}</TableCell>
                   <TableCell>{type.label}</TableCell>
                   <TableCell>
                     <Badge variant={type.isActive ? "default" : "secondary"}>
@@ -283,16 +280,7 @@ export default function SolicitationTypesPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-value">Valor (identificador único)</Label>
-              <Input
-                id="edit-value"
-                value={formData.value}
-                onChange={(e) => setFormData({ ...formData, value: e.target.value.toLowerCase().replace(/\s+/g, "_") })}
-                data-testid="input-edit-type-value"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-label">Nome de Exibição</Label>
+              <Label htmlFor="edit-label">Nome do Tipo</Label>
               <Input
                 id="edit-label"
                 value={formData.label}

@@ -525,6 +525,25 @@ export class DatabaseStorage implements IStorage {
       });
       console.log("Operator user created successfully.");
     }
+
+    // Seed default solicitation types
+    const existingTypes = await this.getSolicitationTypes();
+    if (existingTypes.length === 0) {
+      console.log("Creating default solicitation types...");
+      const defaultTypes = [
+        { value: "transferencia_renovacao", label: "Transferência + Renovação", sortOrder: "1", isActive: true },
+        { value: "reinicio", label: "Reinício", sortOrder: "2", isActive: true },
+        { value: "transferencia", label: "Transferência", sortOrder: "3", isActive: true },
+        { value: "renovacao", label: "Renovação", sortOrder: "4", isActive: true },
+        { value: "adicao_categoria", label: "Adição Categoria", sortOrder: "5", isActive: true },
+        { value: "primeira_habilitacao", label: "Primeira Habilitação", sortOrder: "6", isActive: true },
+        { value: "mudanca_categoria", label: "Mudança de Categoria", sortOrder: "7", isActive: true },
+      ];
+      for (const type of defaultTypes) {
+        await this.createSolicitationType(type);
+      }
+      console.log("Solicitation types created successfully.");
+    }
   }
 }
 
