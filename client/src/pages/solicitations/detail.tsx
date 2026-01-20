@@ -99,6 +99,8 @@ export default function SolicitationDetailPage() {
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [rejectingRequestId, setRejectingRequestId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [isPenaltyDialogOpen, setIsPenaltyDialogOpen] = useState(false);
+  const [penaltyReleaseDate, setPenaltyReleaseDate] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const previousMessagesCount = useRef<number>(0);
@@ -262,6 +264,48 @@ export default function SolicitationDetailPage() {
     if (rejectingRequestId) {
       rejectAccessMutation.mutate({ requestId: rejectingRequestId, reason: rejectionReason });
     }
+  };
+
+  const setPenaltyMutation = useMutation({
+    mutationFn: async (data: { penaltyReleaseDate: string }) => {
+      return apiRequest("PATCH", `/api/solicitations/${params?.id}/penalty`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Penalidade registrada com sucesso!" });
+      setIsPenaltyDialogOpen(false);
+      setPenaltyReleaseDate("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao registrar penalidade", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const requestReanalysisMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/solicitations/${params?.id}/request-reanalysis`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Reanálise solicitada com sucesso!" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao solicitar reanálise", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handlePenalty = () => {
+    if (!penaltyReleaseDate) {
+      toast({ title: "Data de liberação é obrigatória", variant: "destructive" });
+      return;
+    }
+    setPenaltyMutation.mutate({ penaltyReleaseDate });
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -452,16 +496,44 @@ export default function SolicitationDetailPage() {
                   </DialogContent>
                 </Dialog>
 
-                <Button 
-                  variant="destructive" 
-                  className="w-full"
-                  onClick={() => updateStatusMutation.mutate({ status: "aguardando_penalidade", sendChatNotification: true })}
-                  disabled={updateStatusMutation.isPending}
-                  data-testid="button-reject"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Aguardando Penalidade
-                </Button>
+                <Dialog open={isPenaltyDialogOpen} onOpenChange={setIsPenaltyDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="destructive" 
+                      className="w-full"
+                      disabled={setPenaltyMutation.isPending}
+                      data-testid="button-reject"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Aguardando Penalidade
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Aguardando Penalidade</DialogTitle>
+                      <DialogDescription>
+                        Informe a data de liberação da penalidade. Após essa data, o status será alterado automaticamente para "Em Análise".
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <label className="block text-sm font-medium mb-2">Data de Liberação</label>
+                      <Input
+                        type="date"
+                        value={penaltyReleaseDate}
+                        onChange={(e) => setPenaltyReleaseDate(e.target.value)}
+                        min={format(new Date(), "yyyy-MM-dd")}
+                        data-testid="input-penalty-date"
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsPenaltyDialogOpen(false)}>Cancelar</Button>
+                      <Button onClick={handlePenalty} disabled={setPenaltyMutation.isPending}>
+                        {setPenaltyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Confirmar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>
@@ -1160,6 +1232,18 @@ export default function SolicitationDetailPage() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+              )}
+
+              {solicitation.status === "pendente_correcao" && (
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => requestReanalysisMutation.mutate()}
+                  disabled={requestReanalysisMutation.isPending}
+                  data-testid="button-request-reanalysis"
+                >
+                  {requestReanalysisMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                  SOLICITAR REANÁLISE
+                </Button>
               )}
             </div>
           )}

@@ -208,7 +208,7 @@ export async function registerRoutes(
 
   app.get("/api/solicitations/:id", requireAuth, async (req, res) => {
     try {
-      const solicitation = await storage.getSolicitation(req.params.id);
+      let solicitation = await storage.getSolicitation(req.params.id);
       if (!solicitation) {
         return res.status(404).json({ message: "Solicitação não encontrada" });
       }
@@ -217,6 +217,27 @@ export async function registerRoutes(
         const school = await storage.getDrivingSchoolByUserId(req.user!.id);
         if (!school || solicitation.drivingSchoolId !== school.id) {
           return res.status(403).json({ message: "Acesso negado" });
+        }
+      }
+
+      // Check if penalty release date has passed and auto-update status
+      if (solicitation.status === "aguardando_penalidade" && solicitation.penaltyReleaseDate) {
+        const releaseDate = new Date(solicitation.penaltyReleaseDate);
+        const now = new Date();
+        if (now >= releaseDate) {
+          await storage.updateSolicitation(req.params.id, {
+            status: "em_analise",
+            penaltyReleaseDate: null,
+          });
+          
+          await storage.createChatMessage({
+            solicitationId: req.params.id,
+            senderId: req.user!.id,
+            message: `[SISTEMA] Período de penalidade encerrado. Status alterado automaticamente para Em Análise.`,
+          });
+          
+          // Refetch the updated solicitation
+          solicitation = await storage.getSolicitation(req.params.id);
         }
       }
 
@@ -525,6 +546,86 @@ export async function registerRoutes(
       });
 
       res.json(accessRequest);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Request reanalysis (autoescola) - changes status from pendente_correcao to em_analise
+  app.post("/api/solicitations/:id/request-reanalysis", requireAuth, requireRole("autoescola"), async (req, res) => {
+    try {
+      const solicitation = await storage.getSolicitation(req.params.id);
+      if (!solicitation) {
+        return res.status(404).json({ message: "Solicitação não encontrada" });
+      }
+
+      if (solicitation.status !== "pendente_correcao") {
+        return res.status(400).json({ message: "Status inválido para reanálise" });
+      }
+
+      const school = await storage.getDrivingSchoolByUserId(req.user!.id);
+      if (!school || solicitation.drivingSchoolId !== school.id) {
+        return res.status(403).json({ message: "Acesso negado" });
+      }
+
+      const updated = await storage.updateSolicitation(req.params.id, {
+        status: "em_analise",
+      });
+
+      await storage.createChatMessage({
+        solicitationId: req.params.id,
+        senderId: req.user!.id,
+        message: `[SISTEMA] A autoescola solicitou reanálise. Status alterado para Em Análise.`,
+      });
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "request_reanalysis",
+        entity: "solicitation",
+        entityId: req.params.id,
+        details: `Autoescola solicitou reanálise`,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Set penalty release date
+  app.patch("/api/solicitations/:id/penalty", requireAuth, requireRole("operador", "admin"), async (req, res) => {
+    try {
+      const { penaltyReleaseDate } = req.body;
+      
+      const solicitation = await storage.getSolicitation(req.params.id);
+      if (!solicitation) {
+        return res.status(404).json({ message: "Solicitação não encontrada" });
+      }
+
+      const releaseDate = new Date(penaltyReleaseDate);
+      
+      const updated = await storage.updateSolicitation(req.params.id, {
+        status: "aguardando_penalidade",
+        penaltyReleaseDate: releaseDate,
+      });
+
+      const formattedDate = releaseDate.toLocaleDateString("pt-BR");
+      
+      await storage.createChatMessage({
+        solicitationId: req.params.id,
+        senderId: req.user!.id,
+        message: `[SISTEMA] Status alterado para: AGUARDANDO PENALIDADE\nData de Liberação: ${formattedDate}`,
+      });
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "set_penalty",
+        entity: "solicitation",
+        entityId: req.params.id,
+        details: `Status alterado para aguardando_penalidade. Data de liberação: ${formattedDate}`,
+      });
+
+      res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

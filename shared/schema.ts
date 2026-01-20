@@ -82,6 +82,7 @@ export const solicitations = pgTable("solicitations", {
   accessRequestedFields: text("access_requested_fields").array(),
   accessRequestedDocuments: text("access_requested_documents").array(),
   accessGranted: boolean("access_granted").notNull().default(false),
+  penaltyReleaseDate: timestamp("penalty_release_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
