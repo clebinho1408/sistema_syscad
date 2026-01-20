@@ -1,10 +1,11 @@
 import {
-  users, drivingSchools, conductors, solicitations, documents, chatMessages, auditLogs, requiredDocuments, chatReadStatus,
+  users, drivingSchools, conductors, solicitations, documents, chatMessages, auditLogs, requiredDocuments, chatReadStatus, accessRequests,
   type User, type InsertUser, type DrivingSchool, type InsertDrivingSchool,
   type Conductor, type InsertConductor, type Solicitation, type InsertSolicitation,
   type Document, type InsertDocument, type ChatMessage, type InsertChatMessage,
   type AuditLog, type InsertAuditLog, type RequiredDocument, type InsertRequiredDocument,
-  type SolicitationWithDetails, type ChatMessageWithSender
+  type SolicitationWithDetails, type ChatMessageWithSender,
+  type AccessRequest, type InsertAccessRequest
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, sql } from "drizzle-orm";
@@ -48,6 +49,11 @@ export interface IStorage {
 
   getRequiredDocuments(solicitationType?: string): Promise<RequiredDocument[]>;
   createRequiredDocument(data: InsertRequiredDocument): Promise<RequiredDocument>;
+
+  getAccessRequests(solicitationId: string): Promise<(AccessRequest & { requestedByName: string })[]>;
+  getAccessRequest(id: string): Promise<AccessRequest | undefined>;
+  createAccessRequest(data: InsertAccessRequest): Promise<AccessRequest>;
+  updateAccessRequest(id: string, data: Partial<AccessRequest>): Promise<AccessRequest | undefined>;
 
   getDashboardStats(userId?: string, role?: string): Promise<any>;
   getReportStats(period: number): Promise<any>;
@@ -308,6 +314,47 @@ export class DatabaseStorage implements IStorage {
   async createRequiredDocument(data: InsertRequiredDocument): Promise<RequiredDocument> {
     const [doc] = await db.insert(requiredDocuments).values(data).returning();
     return doc;
+  }
+
+  async getAccessRequests(solicitationId: string): Promise<(AccessRequest & { requestedByName: string })[]> {
+    const requests = await db
+      .select({
+        id: accessRequests.id,
+        solicitationId: accessRequests.solicitationId,
+        requestedByUserId: accessRequests.requestedByUserId,
+        fields: accessRequests.fields,
+        documents: accessRequests.documents,
+        status: accessRequests.status,
+        rejectionReason: accessRequests.rejectionReason,
+        decidedByUserId: accessRequests.decidedByUserId,
+        createdAt: accessRequests.createdAt,
+        decidedAt: accessRequests.decidedAt,
+        requestedByName: users.name,
+      })
+      .from(accessRequests)
+      .leftJoin(users, eq(accessRequests.requestedByUserId, users.id))
+      .where(eq(accessRequests.solicitationId, solicitationId))
+      .orderBy(desc(accessRequests.createdAt));
+    
+    return requests.map(r => ({
+      ...r,
+      requestedByName: r.requestedByName || "Desconhecido",
+    }));
+  }
+
+  async getAccessRequest(id: string): Promise<AccessRequest | undefined> {
+    const [request] = await db.select().from(accessRequests).where(eq(accessRequests.id, id));
+    return request || undefined;
+  }
+
+  async createAccessRequest(data: InsertAccessRequest): Promise<AccessRequest> {
+    const [request] = await db.insert(accessRequests).values(data).returning();
+    return request;
+  }
+
+  async updateAccessRequest(id: string, data: Partial<AccessRequest>): Promise<AccessRequest | undefined> {
+    const [request] = await db.update(accessRequests).set(data).where(eq(accessRequests.id, id)).returning();
+    return request || undefined;
   }
 
   async getDashboardStats(userId?: string, role?: string): Promise<any> {

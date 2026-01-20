@@ -473,7 +473,16 @@ export async function registerRoutes(
   app.post("/api/solicitations/:id/request-access", requireAuth, requireRole("autoescola"), async (req, res) => {
     try {
       const { fields, documents } = req.body;
-      const updated = await storage.updateSolicitation(req.params.id, {
+      
+      const accessRequest = await storage.createAccessRequest({
+        solicitationId: req.params.id,
+        requestedByUserId: req.user!.id,
+        fields: fields || [],
+        documents: documents || [],
+        status: "pending",
+      });
+
+      await storage.updateSolicitation(req.params.id, {
         accessRequestedFields: fields,
         accessRequestedDocuments: documents,
         accessGranted: false
@@ -491,6 +500,7 @@ export async function registerRoutes(
         endereco: "Endereço",
         telefone1: "Telefone 1",
         telefone2: "Telefone 2",
+        dddCelular: "DDD Telefone Celular",
         email: "E-mail",
         renach_assinado: "Renach Assinado",
         documento_identificacao: "Documento de Identificação",
@@ -498,13 +508,127 @@ export async function registerRoutes(
         outros: "Outros Documentos/Declarações"
       };
 
-      const fieldLabels = fields.map((f: string) => labels[f] || f);
-      const docLabels = documents.map((d: string) => labels[d] || d);
+      const fieldLabels = (fields || []).map((f: string) => labels[f] || f);
+      const docLabels = (documents || []).map((d: string) => labels[d] || d);
 
       await storage.createChatMessage({
         solicitationId: req.params.id,
         senderId: req.user!.id,
         message: `[PEDIDO DE ACESSO] A autoescola solicitou acesso para corrigir campos (${fieldLabels.join(", ")}) e anexos (${docLabels.join(", ")})`,
+      });
+
+      res.json(accessRequest);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/solicitations/:id/access-requests", requireAuth, async (req, res) => {
+    try {
+      const solicitation = await storage.getSolicitation(req.params.id);
+      if (!solicitation) {
+        return res.status(404).json({ message: "Solicitação não encontrada" });
+      }
+
+      if (req.user!.role === "autoescola") {
+        const school = await storage.getDrivingSchoolByUserId(req.user!.id);
+        if (!school || solicitation.drivingSchoolId !== school.id) {
+          return res.status(403).json({ message: "Acesso negado" });
+        }
+      }
+
+      const requests = await storage.getAccessRequests(req.params.id);
+      res.json(requests);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/access-requests/:id/approve", requireAuth, requireRole("operador", "admin"), async (req, res) => {
+    try {
+      const existingRequest = await storage.getAccessRequest(req.params.id);
+      if (!existingRequest) {
+        return res.status(404).json({ message: "Pedido de acesso não encontrado" });
+      }
+      
+      if (existingRequest.status !== "pending") {
+        return res.status(400).json({ message: "Este pedido já foi processado" });
+      }
+
+      const updated = await storage.updateAccessRequest(req.params.id, {
+        status: "approved",
+        decidedByUserId: req.user!.id,
+        decidedAt: new Date(),
+      });
+
+      if (!updated) {
+        return res.status(404).json({ message: "Pedido de acesso não encontrado" });
+      }
+
+      await storage.updateSolicitation(updated.solicitationId, {
+        accessGranted: true,
+      });
+
+      await storage.createChatMessage({
+        solicitationId: updated.solicitationId,
+        senderId: req.user!.id,
+        message: `[ACESSO APROVADO] O pedido de acesso para correção foi aprovado.`,
+      });
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "approve_access_request",
+        entity: "access_request",
+        entityId: req.params.id,
+        details: `Pedido de acesso aprovado para solicitação ${updated.solicitationId}`,
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/access-requests/:id/reject", requireAuth, requireRole("operador", "admin"), async (req, res) => {
+    try {
+      const { reason } = req.body;
+      
+      if (!reason || reason.trim() === "") {
+        return res.status(400).json({ message: "Motivo da rejeição é obrigatório" });
+      }
+
+      const existingRequest = await storage.getAccessRequest(req.params.id);
+      if (!existingRequest) {
+        return res.status(404).json({ message: "Pedido de acesso não encontrado" });
+      }
+      
+      if (existingRequest.status !== "pending") {
+        return res.status(400).json({ message: "Este pedido já foi processado" });
+      }
+
+      const updated = await storage.updateAccessRequest(req.params.id, {
+        status: "rejected",
+        rejectionReason: reason,
+        decidedByUserId: req.user!.id,
+        decidedAt: new Date(),
+      });
+
+      if (!updated) {
+        return res.status(404).json({ message: "Pedido de acesso não encontrado" });
+      }
+
+      await storage.createChatMessage({
+        solicitationId: updated.solicitationId,
+        senderId: req.user!.id,
+        message: `[ACESSO NEGADO] O pedido de acesso para correção foi negado. Motivo: ${reason}`,
+      });
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "reject_access_request",
+        entity: "access_request",
+        entityId: req.params.id,
+        details: `Pedido de acesso rejeitado para solicitação ${updated.solicitationId}. Motivo: ${reason}`,
       });
 
       res.json(updated);

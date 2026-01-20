@@ -94,6 +94,9 @@ export default function SolicitationDetailPage() {
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [copiedFields, setCopiedFields] = useState<Set<string>>(new Set());
   const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [rejectingRequestId, setRejectingRequestId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const previousMessagesCount = useRef<number>(0);
@@ -128,6 +131,11 @@ export default function SolicitationDetailPage() {
 
   const { data: documents } = useQuery<Document[]>({
     queryKey: ["/api/solicitations", params?.id, "documents"],
+    enabled: !!params?.id,
+  });
+
+  const { data: accessRequests } = useQuery<{ id: string; fields: string[] | null; documents: string[] | null; status: string; requestedByName: string; rejectionReason: string | null; createdAt: string }[]>({
+    queryKey: ["/api/solicitations", params?.id, "access-requests"],
     enabled: !!params?.id,
   });
 
@@ -202,6 +210,7 @@ export default function SolicitationDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "access-requests"] });
       toast({ title: "Pedido de acesso enviado!" });
       setIsAccessRequestOpen(false);
     },
@@ -209,6 +218,49 @@ export default function SolicitationDetailPage() {
       toast({ title: "Erro ao enviar pedido", description: error.message, variant: "destructive" });
     },
   });
+
+  const approveAccessMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      return apiRequest("POST", `/api/access-requests/${requestId}/approve`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "access-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "messages"] });
+      toast({ title: "Pedido de acesso aprovado!" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao aprovar pedido", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const rejectAccessMutation = useMutation({
+    mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) => {
+      return apiRequest("POST", `/api/access-requests/${requestId}/reject`, { reason });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "access-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "messages"] });
+      toast({ title: "Pedido de acesso rejeitado!" });
+      setIsRejectDialogOpen(false);
+      setRejectingRequestId(null);
+      setRejectionReason("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao rejeitar pedido", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleRejectAccess = () => {
+    if (!rejectionReason.trim()) {
+      toast({ title: "Motivo da rejeição é obrigatório", variant: "destructive" });
+      return;
+    }
+    if (rejectingRequestId) {
+      rejectAccessMutation.mutate({ requestId: rejectingRequestId, reason: rejectionReason });
+    }
+  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -411,6 +463,138 @@ export default function SolicitationDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        {(user?.role === "operador" || user?.role === "admin") && accessRequests && accessRequests.filter(r => r.status === "pending").length > 0 && (
+          <Card className="mb-6 border-orange-300 bg-orange-50 dark:bg-orange-950/20">
+            <CardHeader className="py-3 border-b bg-orange-100/50 dark:bg-orange-900/30">
+              <CardTitle className="text-lg font-bold flex items-center gap-2 text-orange-700 dark:text-orange-400">
+                <ClipboardList className="w-5 h-5" />
+                Pedidos de Acesso Pendentes ({accessRequests.filter(r => r.status === "pending").length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-4">
+                {accessRequests.filter(r => r.status === "pending").map((request) => {
+                  const labels: Record<string, string> = {
+                    nomeCompleto: "Nome Completo",
+                    nomeMae: "Nome da Mãe",
+                    nomePai: "Nome do Pai",
+                    nacionalidade: "Nacionalidade",
+                    dataNascimento: "Data de Nascimento",
+                    cidadeNascimento: "Cidade de Nascimento",
+                    ufNascimento: "UF Nascimento",
+                    rg: "RG/Órgão",
+                    endereco: "Endereço",
+                    telefone1: "Telefone 1",
+                    telefone2: "Telefone 2",
+                    dddCelular: "DDD Telefone Celular",
+                    email: "E-mail",
+                    renach_assinado: "Renach Assinado",
+                    documento_identificacao: "Documento de Identificação",
+                    comprovante_residencia: "Comprovante de Residência",
+                    outros: "Outros Documentos/Declarações"
+                  };
+                  const fieldLabels = (request.fields || []).map(f => labels[f] || f);
+                  const docLabels = (request.documents || []).map(d => labels[d] || d);
+                  
+                  return (
+                    <div key={request.id} className="p-4 border rounded-lg bg-white dark:bg-gray-900">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="text-sm text-muted-foreground">
+                            Solicitado por: <span className="font-medium text-foreground">{request.requestedByName}</span>
+                          </p>
+                          {fieldLabels.length > 0 && (
+                            <p className="text-sm mt-1">
+                              <span className="text-muted-foreground">Campos:</span>{" "}
+                              <span className="font-medium">{fieldLabels.join(", ")}</span>
+                            </p>
+                          )}
+                          {docLabels.length > 0 && (
+                            <p className="text-sm mt-1">
+                              <span className="text-muted-foreground">Documentos:</span>{" "}
+                              <span className="font-medium">{docLabels.join(", ")}</span>
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {format(new Date(request.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => approveAccessMutation.mutate(request.id)}
+                            disabled={approveAccessMutation.isPending || rejectAccessMutation.isPending}
+                            data-testid={`button-approve-access-${request.id}`}
+                          >
+                            {approveAccessMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            ) : (
+                              <CheckCircle2 className="w-4 h-4 mr-2" />
+                            )}
+                            Aprovar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              setRejectingRequestId(request.id);
+                              setIsRejectDialogOpen(true);
+                            }}
+                            disabled={approveAccessMutation.isPending || rejectAccessMutation.isPending}
+                            data-testid={`button-reject-access-${request.id}`}
+                          >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Negar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Negar Pedido de Acesso</DialogTitle>
+              <DialogDescription>
+                Informe o motivo da negação para a autoescola.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Textarea
+                placeholder="Descreva o motivo da negação..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="min-h-[100px]"
+                data-testid="input-rejection-reason"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsRejectDialogOpen(false);
+                setRejectingRequestId(null);
+                setRejectionReason("");
+              }}>
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleRejectAccess}
+                disabled={rejectAccessMutation.isPending}
+                data-testid="button-confirm-reject"
+              >
+                {rejectAccessMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Confirmar Negação
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
