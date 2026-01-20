@@ -65,13 +65,23 @@ export async function registerRoutes(
   }
 
   app.post("/api/auth/login", (req, res, next) => {
+    console.log("Login attempt:", req.body.username);
     passport.authenticate("local", async (err: any, user: any, info: any) => {
-      if (err) return next(err);
+      if (err) {
+        console.error("Login error:", err);
+        return next(err);
+      }
       if (!user) {
+        console.log("Login failed - user not found or invalid password:", info?.message);
         return res.status(401).json({ message: info?.message || "Falha na autenticação" });
       }
+      console.log("Login success, creating session for:", user.username);
       req.login(user, async (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error("Session creation error:", err);
+          return next(err);
+        }
+        console.log("Session created successfully");
         
         await storage.createAuditLog({
           userId: user.id,

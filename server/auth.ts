@@ -27,6 +27,11 @@ declare global {
 export function setupAuth(app: Express) {
   const PgSession = connectPgSimple(session);
 
+  // Trust proxy for production (Replit runs behind a reverse proxy)
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
   app.use(
     session({
       store: new PgSession({
@@ -34,7 +39,7 @@ export function setupAuth(app: Express) {
         tableName: "session",
         createTableIfMissing: true,
       }),
-      secret: process.env.SESSION_SECRET!,
+      secret: process.env.SESSION_SECRET || "syscad-dev-secret-key",
       resave: false,
       saveUninitialized: false,
       cookie: {
