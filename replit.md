@@ -1,8 +1,8 @@
-# DETRAN Solicitation Management System
+# SysCad - Sistema de Cadastro
 
 ## Overview
 
-This is a corporate web system for internal control of registration requests and cadastral changes submitted by driving schools (autoescolas) to DETRAN (Brazilian Department of Motor Vehicles) agencies.
+This is a corporate web system (formerly DETRAN Solicitation Management System) for internal control of registration requests and cadastral changes submitted by driving schools (autoescolas) to DETRAN (Brazilian Department of Motor Vehicles) agencies.
 
 The platform serves as an internal management system with authentication, access levels, analysis workflow, document verification, and real-time communication between driving schools and DETRAN operators.
 
@@ -43,7 +43,23 @@ Preferred communication style: Simple, everyday language.
 ### User Roles & Access Control
 1. **Autoescola (Driving School):** Create and track solicitations, upload documents, chat with operators
 2. **Operador (Operator):** Analyze requests, update statuses, communicate with schools
-3. **Admin:** Full system access, user management, reports, audit logs
+3. **Admin:** Full system access, user management, reports, audit logs, solicitation types management
+
+### Solicitation Types (Managed via Admin CRUD)
+- Transferência + Renovação
+- Reinício
+- Transferência
+- Renovação
+- Adição Categoria
+- Primeira Habilitação
+- Mudança de Categoria
+
+### Solicitation Statuses
+- Em Análise: Initial status, under review
+- Pendente de Correção: Requires corrections from driving school
+- Cadastro Finalizado: Processing completed, chat still enabled
+- Aprovada: Fully approved, chat disabled
+- Aguardando Penalidade: Waiting for penalty release date
 
 ### Key Design Patterns
 - **Monorepo Structure:** Client (`client/`), Server (`server/`), Shared (`shared/`)

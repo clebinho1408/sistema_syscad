@@ -145,6 +145,15 @@ export const accessRequests = pgTable("access_requests", {
   decidedAt: timestamp("decided_at"),
 });
 
+export const solicitationTypes = pgTable("solicitation_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  value: text("value").notNull().unique(),
+  label: text("label").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: text("sort_order").notNull().default("0"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   drivingSchool: one(drivingSchools, {
     fields: [users.id],
@@ -229,6 +238,7 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({ i
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
 export const insertRequiredDocumentSchema = createInsertSchema(requiredDocuments).omit({ id: true });
 export const insertAccessRequestSchema = createInsertSchema(accessRequests).omit({ id: true, createdAt: true, decidedAt: true });
+export const insertSolicitationTypeSchema = createInsertSchema(solicitationTypes).omit({ id: true, createdAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -248,6 +258,8 @@ export type InsertRequiredDocument = z.infer<typeof insertRequiredDocumentSchema
 export type RequiredDocument = typeof requiredDocuments.$inferSelect;
 export type InsertAccessRequest = z.infer<typeof insertAccessRequestSchema>;
 export type AccessRequest = typeof accessRequests.$inferSelect;
+export type InsertSolicitationType = z.infer<typeof insertSolicitationTypeSchema>;
+export type SolicitationType = typeof solicitationTypes.$inferSelect;
 
 export const loginSchema = z.object({
   username: z.string().min(1, "Usuário é obrigatório"),

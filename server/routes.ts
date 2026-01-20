@@ -872,5 +872,88 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/solicitation-types", requireAuth, async (req, res) => {
+    try {
+      const activeOnly = req.query.activeOnly === "true";
+      const types = await storage.getSolicitationTypes(activeOnly);
+      res.json(types);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/solicitation-types", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const { value, label, isActive, sortOrder } = req.body;
+      const type = await storage.createSolicitationType({ value, label, isActive: isActive ?? true, sortOrder: sortOrder ?? "0" });
+      
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "create",
+        entity: "solicitation_type",
+        entityId: type.id,
+        details: `Tipo de solicitação "${label}" criado`,
+      });
+      
+      res.status(201).json(type);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.patch("/api/solicitation-types/:id", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const { value, label, isActive, sortOrder } = req.body;
+      const updateData: any = {};
+      if (value !== undefined) updateData.value = value;
+      if (label !== undefined) updateData.label = label;
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (sortOrder !== undefined) updateData.sortOrder = sortOrder;
+      
+      const type = await storage.updateSolicitationType(req.params.id, updateData);
+      
+      if (!type) {
+        return res.status(404).json({ message: "Tipo não encontrado" });
+      }
+      
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "update",
+        entity: "solicitation_type",
+        entityId: req.params.id,
+        details: `Tipo de solicitação "${type.label}" atualizado`,
+      });
+      
+      res.json(type);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/solicitation-types/:id", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const type = await storage.getSolicitationType(req.params.id);
+      if (!type) {
+        return res.status(404).json({ message: "Tipo não encontrado" });
+      }
+      
+      const deleted = await storage.deleteSolicitationType(req.params.id);
+      
+      if (deleted) {
+        await storage.createAuditLog({
+          userId: req.user!.id,
+          action: "delete",
+          entity: "solicitation_type",
+          entityId: req.params.id,
+          details: `Tipo de solicitação "${type.label}" removido`,
+        });
+      }
+      
+      res.json({ success: deleted });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   return httpServer;
 }

@@ -1,11 +1,12 @@
 import {
-  users, drivingSchools, conductors, solicitations, documents, chatMessages, auditLogs, requiredDocuments, chatReadStatus, accessRequests,
+  users, drivingSchools, conductors, solicitations, documents, chatMessages, auditLogs, requiredDocuments, chatReadStatus, accessRequests, solicitationTypes,
   type User, type InsertUser, type DrivingSchool, type InsertDrivingSchool,
   type Conductor, type InsertConductor, type Solicitation, type InsertSolicitation,
   type Document, type InsertDocument, type ChatMessage, type InsertChatMessage,
   type AuditLog, type InsertAuditLog, type RequiredDocument, type InsertRequiredDocument,
   type SolicitationWithDetails, type ChatMessageWithSender,
-  type AccessRequest, type InsertAccessRequest
+  type AccessRequest, type InsertAccessRequest,
+  type SolicitationType, type InsertSolicitationType
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, sql } from "drizzle-orm";
@@ -58,6 +59,12 @@ export interface IStorage {
 
   getDashboardStats(userId?: string, role?: string): Promise<any>;
   getReportStats(period: number): Promise<any>;
+
+  getSolicitationTypes(activeOnly?: boolean): Promise<SolicitationType[]>;
+  getSolicitationType(id: string): Promise<SolicitationType | undefined>;
+  createSolicitationType(data: InsertSolicitationType): Promise<SolicitationType>;
+  updateSolicitationType(id: string, data: Partial<InsertSolicitationType>): Promise<SolicitationType | undefined>;
+  deleteSolicitationType(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -437,6 +444,33 @@ export class DatabaseStorage implements IStorage {
       bySchool,
       averageAnalysisTime: 2,
     };
+  }
+
+  async getSolicitationTypes(activeOnly?: boolean): Promise<SolicitationType[]> {
+    if (activeOnly) {
+      return db.select().from(solicitationTypes).where(eq(solicitationTypes.isActive, true)).orderBy(solicitationTypes.sortOrder);
+    }
+    return db.select().from(solicitationTypes).orderBy(solicitationTypes.sortOrder);
+  }
+
+  async getSolicitationType(id: string): Promise<SolicitationType | undefined> {
+    const [type] = await db.select().from(solicitationTypes).where(eq(solicitationTypes.id, id));
+    return type || undefined;
+  }
+
+  async createSolicitationType(data: InsertSolicitationType): Promise<SolicitationType> {
+    const [type] = await db.insert(solicitationTypes).values(data).returning();
+    return type;
+  }
+
+  async updateSolicitationType(id: string, data: Partial<InsertSolicitationType>): Promise<SolicitationType | undefined> {
+    const [type] = await db.update(solicitationTypes).set(data).where(eq(solicitationTypes.id, id)).returning();
+    return type || undefined;
+  }
+
+  async deleteSolicitationType(id: string): Promise<boolean> {
+    const result = await db.delete(solicitationTypes).where(eq(solicitationTypes.id, id)).returning();
+    return result.length > 0;
   }
 }
 

@@ -21,6 +21,7 @@ import UsersPage from "@/pages/users";
 import ReportsPage from "@/pages/reports";
 import AuditLogsPage from "@/pages/audit-logs";
 import SettingsPage from "@/pages/settings";
+import SolicitationTypesPage from "@/pages/solicitation-types";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, allowedRoles }: { component: React.ComponentType; allowedRoles?: string[] }) {
@@ -145,6 +146,11 @@ function Router() {
       <Route path="/settings">
         <AppLayout>
           <ProtectedRoute component={SettingsPage} allowedRoles={["admin"]} />
+        </AppLayout>
+      </Route>
+      <Route path="/solicitation-types">
+        <AppLayout>
+          <ProtectedRoute component={SolicitationTypesPage} allowedRoles={["admin"]} />
         </AppLayout>
       </Route>
       <Route component={NotFound} />
