@@ -86,8 +86,24 @@ Preferred communication style: Simple, everyday language.
 ### Environment Requirements
 - `DATABASE_URL`: PostgreSQL connection string (required)
 - `SESSION_SECRET`: Session encryption key (optional, has default)
+- `DEFAULT_OBJECT_STORAGE_BUCKET_ID`: Replit Object Storage bucket ID (configured automatically)
 
 ### Replit-Specific Integrations
 - `@replit/vite-plugin-runtime-error-modal`: Error overlay in development
 - `@replit/vite-plugin-cartographer`: Development tooling
 - `@replit/vite-plugin-dev-banner`: Development indicator
+
+### Object Storage Integration
+- **Purpose:** Store document files externally instead of base64 in database
+- **Service:** Replit Object Storage (GCS-backed)
+- **Routes:**
+  - `POST /api/documents/request-upload-url`: Get presigned upload URL with token binding
+  - `POST /api/documents/save`: Save document metadata after upload (validates token)
+  - `GET /api/documents/:id/download`: Download document (supports both object storage and legacy base64)
+  - `GET /objects/*`: Serve files directly from object storage (requires auth + ACL check)
+- **Security Model:**
+  - Token binding system validates upload requests belong to authorized users
+  - ACL policies set on files with owner verification
+  - One-time use tokens with 15-minute expiration
+- **Database Schema:** documents table has `fileKey` (object path) and `fileData` (nullable, legacy base64)
+- **Backward Compatibility:** Existing base64 documents continue to work during gradual migration
