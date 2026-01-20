@@ -64,8 +64,15 @@ app.use((req, res, next) => {
 
 (async () => {
   // Seed initial data (admin and operator users)
-  const defaultAdminPassword = bcrypt.hashSync("Dg14@81986", 10);
-  await storage.seedInitialData(defaultAdminPassword);
+  console.log("Starting server initialization...");
+  try {
+    const defaultAdminPassword = bcrypt.hashSync("Dg14@81986", 10);
+    console.log("Seeding initial data...");
+    await storage.seedInitialData(defaultAdminPassword);
+    console.log("Seed complete.");
+  } catch (error) {
+    console.error("Error during seed:", error);
+  }
   
   await registerRoutes(httpServer, app);
 
