@@ -7,12 +7,31 @@ import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
 import passport from "passport";
 import { WebSocketServer, WebSocket } from "ws";
+import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+  
+  // Register Object Storage routes
+  registerObjectStorageRoutes(app);
+  const objectStorageService = new ObjectStorageService();
+  
+  // Store pending upload tokens (objectPath -> { userId, solicitationId, expiresAt })
+  const pendingUploadTokens = new Map<string, { userId: string; solicitationId: string; expiresAt: number }>();
+  
+  // Clean up expired tokens every 5 minutes
+  setInterval(() => {
+    const now = Date.now();
+    const entries = Array.from(pendingUploadTokens.entries());
+    for (const [key, value] of entries) {
+      if (value.expiresAt < now) {
+        pendingUploadTokens.delete(key);
+      }
+    }
+  }, 5 * 60 * 1000);
 
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
   const clients = new Map<string, Set<WebSocket>>();
@@ -445,6 +464,164 @@ export async function registerRoutes(
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Route for requesting presigned URL for document upload
+  app.post("/api/documents/request-upload-url", requireAuth, async (req, res) => {
+    try {
+      const { name, size, contentType, solicitationId, category } = req.body;
+
+      if (!name || !solicitationId) {
+        return res.status(400).json({ error: "Nome do arquivo e ID da solicitação são obrigatórios" });
+      }
+
+      // Verify user has access to the solicitation
+      const solicitation = await storage.getSolicitation(solicitationId);
+      if (!solicitation) {
+        return res.status(404).json({ error: "Solicitação não encontrada" });
+      }
+
+      const user = req.user!;
+      if (user.role === "autoescola") {
+        const school = await storage.getDrivingSchoolByUserId(user.id);
+        if (!school || solicitation.drivingSchoolId !== school.id) {
+          return res.status(403).json({ error: "Acesso negado" });
+        }
+      }
+
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+
+      // Store the pending upload token (expires in 15 minutes)
+      pendingUploadTokens.set(objectPath, {
+        userId: user.id,
+        solicitationId,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+      });
+
+      res.json({
+        uploadURL,
+        objectPath,
+        metadata: { name, size, contentType, solicitationId, category },
+      });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: "Falha ao gerar URL de upload" });
+    }
+  });
+
+  // Route for saving document metadata after upload to object storage
+  app.post("/api/documents/save", requireAuth, async (req, res) => {
+    try {
+      const { solicitationId, fileName, fileType, fileKey, fileSize, category } = req.body;
+
+      if (!solicitationId || !fileName || !fileKey) {
+        return res.status(400).json({ error: "Dados obrigatórios não informados" });
+      }
+
+      const user = req.user!;
+
+      // Validate the upload token - ensures fileKey was issued by request-upload-url
+      const pendingToken = pendingUploadTokens.get(fileKey);
+      if (!pendingToken) {
+        return res.status(400).json({ error: "Token de upload inválido ou expirado" });
+      }
+      
+      // Validate token ownership and solicitation match
+      if (pendingToken.userId !== user.id) {
+        return res.status(403).json({ error: "Token de upload não pertence a este usuário" });
+      }
+      
+      if (pendingToken.solicitationId !== solicitationId) {
+        return res.status(400).json({ error: "Token de upload não corresponde à solicitação" });
+      }
+      
+      if (pendingToken.expiresAt < Date.now()) {
+        pendingUploadTokens.delete(fileKey);
+        return res.status(400).json({ error: "Token de upload expirado" });
+      }
+
+      // Remove the token after validation (one-time use)
+      pendingUploadTokens.delete(fileKey);
+
+      // Set ACL policy for the uploaded file
+      await objectStorageService.trySetObjectEntityAclPolicy(fileKey, {
+        owner: user.id,
+        visibility: "private",
+      });
+
+      const document = await storage.createDocument({
+        solicitationId,
+        fileName,
+        fileType: fileType || "application/octet-stream",
+        fileData: null,
+        fileKey,
+        fileSize: fileSize?.toString() || null,
+        category: category || null,
+        isLegible: null,
+        isValid: null,
+        isCompatible: null,
+      });
+
+      res.status(201).json(document);
+    } catch (error: any) {
+      console.error("Error saving document:", error);
+      res.status(500).json({ error: error.message || "Falha ao salvar documento" });
+    }
+  });
+
+  // Route for serving document content (supports both base64 and object storage)
+  app.get("/api/documents/:id/download", requireAuth, async (req, res) => {
+    try {
+      const document = await storage.getDocumentById(req.params.id);
+
+      if (!document) {
+        return res.status(404).json({ error: "Documento não encontrado" });
+      }
+
+      // Verify user has access to this document's solicitation
+      const solicitation = await storage.getSolicitation(document.solicitationId);
+      if (!solicitation) {
+        return res.status(404).json({ error: "Solicitação não encontrada" });
+      }
+
+      // Check authorization: admin/operador can see all, autoescola only their own
+      const user = req.user!;
+      if (user.role === "autoescola") {
+        const school = await storage.getDrivingSchoolByUserId(user.id);
+        if (!school || solicitation.drivingSchoolId !== school.id) {
+          return res.status(403).json({ error: "Acesso negado" });
+        }
+      }
+
+      // If document is in object storage
+      if (document.fileKey) {
+        try {
+          const objectFile = await objectStorageService.getObjectEntityFile(document.fileKey);
+          await objectStorageService.downloadObject(objectFile, res);
+          return;
+        } catch (error) {
+          console.error("Error fetching from object storage:", error);
+          return res.status(404).json({ error: "Arquivo não encontrado no armazenamento" });
+        }
+      }
+
+      // If document is in database (base64)
+      if (document.fileData) {
+        const base64Data = document.fileData.split(",")[1] || document.fileData;
+        const buffer = Buffer.from(base64Data, "base64");
+        res.set({
+          "Content-Type": document.fileType || "application/octet-stream",
+          "Content-Disposition": `attachment; filename="${document.fileName}"`,
+        });
+        return res.send(buffer);
+      }
+
+      return res.status(404).json({ error: "Conteúdo do documento não disponível" });
+    } catch (error: any) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 

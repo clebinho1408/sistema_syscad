@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 /**
@@ -15,6 +15,14 @@ import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
  */
 export function registerObjectStorageRoutes(app: Express): void {
   const objectStorageService = new ObjectStorageService();
+  
+  // Simple auth check middleware for object storage routes
+  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+      return next();
+    }
+    return res.status(401).json({ error: "Não autenticado" });
+  };
 
   /**
    * Request a presigned URL for file upload.
@@ -65,14 +73,26 @@ export function registerObjectStorageRoutes(app: Express): void {
   /**
    * Serve uploaded objects.
    *
-   * GET /objects/:objectPath(*)
+   * GET /objects/*
    *
-   * This serves files from object storage. For public files, no auth needed.
-   * For protected files, add authentication middleware and ACL checks.
+   * Protected route - requires authentication and ACL check.
    */
-  app.get("/objects/:objectPath(*)", async (req, res) => {
+  app.get("/objects/*splat", requireAuth, async (req, res) => {
     try {
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      const objectPath = "/objects/" + (req.params as any).splat;
+      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+      
+      // Check if user can access this object based on ACL
+      const userId = (req.user as any)?.id;
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        userId,
+        objectFile,
+      });
+      
+      if (!canAccess) {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
+      
       await objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
       console.error("Error serving object:", error);
