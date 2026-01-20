@@ -277,7 +277,6 @@ export default function SolicitationDetailPage() {
     { id: "nomeSocial", label: "Nome Social" },
     { id: "filiacaoAfetiva1", label: "Filiação Afetiva 1" },
     { id: "filiacaoAfetiva2", label: "Filiação Afetiva 2" },
-    { id: "sexo", label: "Sexo" },
     { id: "nomeMae", label: "Nome da Mãe" },
     { id: "nomePai", label: "Nome do Pai" },
     { id: "nacionalidade", label: "Nacionalidade" },
@@ -464,7 +463,6 @@ export default function SolicitationDetailPage() {
                               <CopyableField label="Filiação Afetiva 2" value={solicitation.conductor.filiacaoAfetiva2 || ""} fieldName="filiacaoAfetiva2" copiedFields={copiedFields} onCopy={copyToClipboard} />
                             </div>
                           )}
-                          <CopyableField label="Sexo" value={solicitation.conductor.sexo || ""} fieldName="sexo" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Data Nascimento" value={format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Identidade" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           <CopyableField label="Órgão Emissor / UF" value={`${solicitation.conductor.orgaoEmissor}/${solicitation.conductor.ufEmissor}`} fieldName="orgaoEmissor" copiedFields={copiedFields} onCopy={copyToClipboard} />
@@ -540,11 +538,24 @@ export default function SolicitationDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
                 Endereço
               </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const enderecoCompleto = `${solicitation.conductor.tipoLogradouro} ${solicitation.conductor.logradouro}, ${solicitation.conductor.numero}${solicitation.conductor.complemento ? ` - ${solicitation.conductor.complemento}` : ''}, ${solicitation.conductor.bairro}, ${solicitation.conductor.cidade}/${solicitation.conductor.uf}, CEP: ${solicitation.conductor.cep}`;
+                  navigator.clipboard.writeText(enderecoCompleto);
+                  toast({ title: "Endereço copiado!" });
+                }}
+                data-testid="button-copy-endereco"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar
+              </Button>
             </CardHeader>
             <CardContent>
               <p className="font-medium">
@@ -559,20 +570,35 @@ export default function SolicitationDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
                 <Phone className="w-5 h-5" />
                 Contato
               </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const contatoCompleto = `${solicitation.conductor.telefone1 ? `Tel: ${solicitation.conductor.telefone1}, ` : ''}Cel: (${solicitation.conductor.dddCelular || ''}) ${solicitation.conductor.telefone2 || ''}, E-mail: ${solicitation.conductor.email}`;
+                  navigator.clipboard.writeText(contatoCompleto);
+                  toast({ title: "Contato copiado!" });
+                }}
+                data-testid="button-copy-contato"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar
+              </Button>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Telefone</p>
-                <p className="font-medium">{solicitation.conductor.telefone1}</p>
-              </div>
+              {solicitation.conductor.telefone1 && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Telefone</p>
+                  <p className="font-medium">{solicitation.conductor.telefone1}</p>
+                </div>
+              )}
               <div>
                 <p className="text-sm text-muted-foreground">Telefone Celular</p>
-                <p className="font-medium">{solicitation.conductor.telefone2 || "-"}</p>
+                <p className="font-medium">({solicitation.conductor.dddCelular || ""}) {solicitation.conductor.telefone2 || "-"}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">E-mail</p>
@@ -592,32 +618,44 @@ export default function SolicitationDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {documents?.map((doc) => (
-                <div key={doc.id} className="flex items-center gap-4 p-3 border rounded-lg">
-                  <FileText className="w-8 h-8 text-primary flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{doc.fileName}</p>
-                    <p className="text-sm text-muted-foreground">{doc.fileType}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => {
-                        setSelectedDoc(doc);
-                      }}
-                      data-testid={`button-view-${doc.id}`}
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
-                    <a href={doc.fileData} download={doc.fileName} target="_blank" rel="noopener noreferrer">
-                      <Button variant="ghost" size="icon" data-testid={`button-download-${doc.id}`}>
-                        <Download className="w-4 h-4" />
+              {documents?.map((doc) => {
+                const categoryLabels: Record<string, string> = {
+                  "renach_assinado": "Renach Assinado",
+                  "documento_identificacao": "Documento de Identificação",
+                  "comprovante_residencia": "Comprovante de Residência",
+                  "outros": "Outros Documentos/Declarações",
+                };
+                const categoryLabel = doc.category ? categoryLabels[doc.category] || doc.category : null;
+                return (
+                  <div key={doc.id} className="flex items-center gap-4 p-3 border rounded-lg">
+                    <FileText className="w-8 h-8 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      {categoryLabel && (
+                        <p className="text-xs font-medium text-primary mb-1">{categoryLabel}</p>
+                      )}
+                      <p className="font-medium truncate">{doc.fileName}</p>
+                      <p className="text-sm text-muted-foreground">{doc.fileType}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => {
+                          setSelectedDoc(doc);
+                        }}
+                        data-testid={`button-view-${doc.id}`}
+                      >
+                        <Send className="w-4 h-4" />
                       </Button>
-                    </a>
+                      <a href={doc.fileData} download={doc.fileName} target="_blank" rel="noopener noreferrer">
+                        <Button variant="ghost" size="icon" data-testid={`button-download-${doc.id}`}>
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {(!documents || documents.length === 0) && (
                 <p className="text-center text-muted-foreground py-4">Nenhum documento anexado</p>
               )}

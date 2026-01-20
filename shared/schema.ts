@@ -91,6 +91,7 @@ export const documents = pgTable("documents", {
   fileName: text("file_name").notNull(),
   fileType: text("file_type").notNull(),
   fileData: text("file_data").notNull(),
+  category: text("category"),
   isLegible: boolean("is_legible"),
   isValid: boolean("is_valid"),
   isCompatible: boolean("is_compatible"),

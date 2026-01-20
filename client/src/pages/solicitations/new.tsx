@@ -246,15 +246,28 @@ export default function NewSolicitationPage() {
 
   const [cpfError, setCpfError] = useState<string | null>(null);
   const [isValidatingCpf, setIsValidatingCpf] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<SolicitationFormData | null>(null);
 
-  const validateCpfUnique = async (cpf: string) => {
+  const validateCpfOnBlur = async (cpf: string) => {
     const cleanCpf = cpf.replace(/\D/g, "");
+    
+    if (cleanCpf.length === 0) {
+      setCpfError(null);
+      return;
+    }
+    
+    if (!validateCpf(cpf)) {
+      setCpfError("CPF inválido");
+      return;
+    }
+    
+    setCpfError(null);
+    
     if (cleanCpf.length < 11) return;
 
     setIsValidatingCpf(true);
-    setCpfError(null);
     try {
       const response = await fetch(`/api/solicitations/check-cpf/${cleanCpf}`);
       const data = await response.json();
@@ -267,6 +280,29 @@ export default function NewSolicitationPage() {
     } finally {
       setIsValidatingCpf(false);
     }
+  };
+
+  const validateDateOnBlur = (dateStr: string) => {
+    if (!dateStr) {
+      setDateError(null);
+      return;
+    }
+    
+    const date = parseDateLocal(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (date > today) {
+      setDateError("Data nascimento não pode ser no futuro");
+      return;
+    }
+    
+    if (calculateAge(date) < 18) {
+      setDateError("O candidato deve ter pelo menos 18 anos completos");
+      return;
+    }
+    
+    setDateError(null);
   };
 
   const [isLoadingCep, setIsLoadingCep] = useState(false);
@@ -459,7 +495,7 @@ export default function NewSolicitationPage() {
                           data-testid="input-cpf"
                           onBlur={(e) => {
                             field.onBlur();
-                            validateCpfUnique(e.target.value);
+                            validateCpfOnBlur(e.target.value);
                           }}
                         />
                         {isValidatingCpf && (
@@ -671,8 +707,17 @@ export default function NewSolicitationPage() {
                   <FormItem>
                     <FormLabel>Data Nascimento *</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} data-testid="input-nascimento" />
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        data-testid="input-nascimento"
+                        onBlur={(e) => {
+                          field.onBlur();
+                          validateDateOnBlur(e.target.value);
+                        }}
+                      />
                     </FormControl>
+                    {dateError && <p className="text-sm font-medium text-destructive">{dateError}</p>}
                     <FormMessage />
                   </FormItem>
                 )}
