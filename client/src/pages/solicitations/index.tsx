@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge, TypeBadge } from "@/components/status-badge";
 import { Link, useLocation } from "wouter";
 import { FileText, Plus, Search, Filter, Calendar, MessageSquare } from "lucide-react";
-import type { SolicitationWithDetails } from "@shared/schema";
+import type { SolicitationWithDetails, SolicitationType } from "@shared/schema";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -28,6 +28,14 @@ export default function SolicitationsPage() {
     queryKey: ["/api/chat/unread-counts"],
     refetchInterval: 10000,
   });
+
+  const { data: solicitationTypes } = useQuery<SolicitationType[]>({
+    queryKey: ["/api/solicitation-types"],
+  });
+
+  const getTypeLabel = (typeValue: string) => {
+    return solicitationTypes?.find(t => t.value === typeValue)?.label || typeValue;
+  };
 
   const getUnreadCount = (solicitationId: string) => {
     return unreadCounts?.find(u => u.solicitationId === solicitationId)?.unreadCount || 0;
@@ -100,13 +108,9 @@ export default function SolicitationsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os tipos</SelectItem>
-                <SelectItem value="transferencia_renovacao">Transferência + Renovação</SelectItem>
-                <SelectItem value="reinicio">Reinício</SelectItem>
-                <SelectItem value="transferencia">Transferência</SelectItem>
-                <SelectItem value="renovacao">Renovação</SelectItem>
-                <SelectItem value="adicao_categoria">Adição Categoria</SelectItem>
-                <SelectItem value="primeira_habilitacao">Primeira Habilitação</SelectItem>
-                <SelectItem value="mudanca_categoria">Mudança de Categoria</SelectItem>
+                {solicitationTypes?.map((type) => (
+                  <SelectItem key={type.id} value={type.value}>{type.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -181,7 +185,7 @@ export default function SolicitationsPage() {
                           </span>
                         )}
                       </button>
-                      <TypeBadge type={solicitation.type as any} />
+                      <TypeBadge type={solicitation.type} label={getTypeLabel(solicitation.type)} />
                       <StatusBadge status={solicitation.status as any} />
                     </div>
                   </div>

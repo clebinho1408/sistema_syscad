@@ -1,7 +1,8 @@
 import type { ChangeEvent, InputHTMLAttributes } from "react";
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { SolicitationType } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -139,7 +140,7 @@ function validateCpf(cpf: string): boolean {
 }
 
 const solicitationSchema = z.object({
-  type: z.enum(["transferencia_renovacao", "reinicio", "transferencia", "renovacao", "adicao_categoria", "primeira_habilitacao", "mudanca_categoria"]),
+  type: z.string().min(1, "Tipo de solicitação é obrigatório"),
   cpf: z.string().min(14, "CPF inválido").refine((val) => validateCpf(val), "CPF inválido"),
   nomeCompleto: z.string().min(2, "Nome é obrigatório").transform(toUpperWithoutAccents),
   nomeSocial: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
@@ -207,10 +208,19 @@ export default function NewSolicitationPage() {
     outros: null,
   });
 
+  const { data: solicitationTypes } = useQuery<SolicitationType[]>({
+    queryKey: ["/api/solicitation-types", { activeOnly: true }],
+    queryFn: async () => {
+      const response = await fetch("/api/solicitation-types?activeOnly=true");
+      if (!response.ok) throw new Error("Erro ao carregar tipos");
+      return response.json();
+    },
+  });
+
   const form = useForm<SolicitationFormData>({
     resolver: zodResolver(solicitationSchema),
     defaultValues: {
-      type: "primeira_habilitacao",
+      type: "",
       cpf: "",
       nomeCompleto: "",
       nomeSocial: "",
@@ -460,13 +470,9 @@ export default function NewSolicitationPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="transferencia_renovacao">Transferência + Renovação</SelectItem>
-                        <SelectItem value="reinicio">Reinício</SelectItem>
-                        <SelectItem value="transferencia">Transferência</SelectItem>
-                        <SelectItem value="renovacao">Renovação</SelectItem>
-                        <SelectItem value="adicao_categoria">Adição Categoria</SelectItem>
-                        <SelectItem value="primeira_habilitacao">Primeira Habilitação</SelectItem>
-                        <SelectItem value="mudanca_categoria">Mudança de Categoria</SelectItem>
+                        {solicitationTypes?.map((type) => (
+                          <SelectItem key={type.id} value={type.value}>{type.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />

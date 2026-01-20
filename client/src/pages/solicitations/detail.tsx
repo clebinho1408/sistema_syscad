@@ -40,7 +40,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { SolicitationWithDetails, ChatMessageWithSender, Document } from "@shared/schema";
+import type { SolicitationWithDetails, ChatMessageWithSender, Document, SolicitationType } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 function CopyableField({
@@ -127,6 +127,14 @@ export default function SolicitationDetailPage() {
     queryKey: ["/api/solicitations", params?.id],
     enabled: !!params?.id,
   });
+
+  const { data: solicitationTypes } = useQuery<SolicitationType[]>({
+    queryKey: ["/api/solicitation-types"],
+  });
+
+  const getTypeLabel = (typeValue: string) => {
+    return solicitationTypes?.find(t => t.value === typeValue)?.label || typeValue;
+  };
 
   const { data: messages } = useQuery<ChatMessageWithSender[]>({
     queryKey: ["/api/solicitations", params?.id, "messages"],
@@ -423,7 +431,7 @@ export default function SolicitationDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <TypeBadge type={solicitation.type as any} />
+          <TypeBadge type={solicitation.type} label={getTypeLabel(solicitation.type)} />
           <StatusBadge status={solicitation.status as any} />
         </div>
       </div>

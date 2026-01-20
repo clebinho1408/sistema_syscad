@@ -111,12 +111,16 @@ const typeConfig: Record<SolicitationType, { label: string; className: string }>
 };
 
 interface TypeBadgeProps {
-  type: SolicitationType;
+  type: string;
+  label?: string;
   className?: string;
 }
 
-export function TypeBadge({ type, className }: TypeBadgeProps) {
-  const config = typeConfig[type];
+export function TypeBadge({ type, label, className }: TypeBadgeProps) {
+  const config = typeConfig[type as SolicitationType] || {
+    label: label || type,
+    className: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border-gray-200 dark:border-gray-800",
+  };
 
   return (
     <Badge
@@ -127,7 +131,7 @@ export function TypeBadge({ type, className }: TypeBadgeProps) {
         className
       )}
     >
-      {config.label}
+      {label || config.label}
     </Badge>
   );
 }
