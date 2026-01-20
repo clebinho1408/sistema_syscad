@@ -268,6 +268,14 @@ export async function registerRoutes(
         documents: documentsList
       } = req.body;
 
+      // Check for duplicate solicitation with same CPF for this driving school
+      const hasPending = await storage.hasPendingSolicitationByCpf(cpf, school.id);
+      if (hasPending) {
+        return res.status(400).json({ 
+          message: "Já existe uma solicitação em andamento para este CPF. Aguarde a conclusão ou aprovação da solicitação existente." 
+        });
+      }
+
       const conductor = await storage.createConductor({
         cpf,
         nomeCompleto,

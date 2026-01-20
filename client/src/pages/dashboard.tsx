@@ -6,7 +6,7 @@ import { FileText, Clock, CheckCircle2, XCircle, AlertTriangle, Building2, Users
 import { StatusBadge, TypeBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import type { SolicitationWithDetails } from "@shared/schema";
+import type { SolicitationWithDetails, SolicitationType } from "@shared/schema";
 
 interface DashboardStats {
   total: number;
@@ -28,9 +28,20 @@ export default function DashboardPage() {
   const { data: allSolicitations, isLoading: solicitationsLoading } = useQuery<SolicitationWithDetails[]>({
     queryKey: ["/api/solicitations"],
   });
+
+  const { data: solicitationTypes } = useQuery<SolicitationType[]>({
+    queryKey: ["/api/solicitation-types"],
+  });
+
+  const getTypeLabel = (typeValue: string) => {
+    return solicitationTypes?.find(t => t.value === typeValue)?.label || typeValue;
+  };
   
-  // Get the 5 most recent solicitations
-  const recentSolicitations = allSolicitations?.slice(0, 5);
+  // Get the 5 most recent solicitations (sorted by createdAt descending)
+  const recentSolicitations = allSolicitations
+    ?.slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5);
 
   if (!user) return null;
 
@@ -196,7 +207,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-end">
-                      <TypeBadge type={solicitation.type as any} />
+                      <TypeBadge type={solicitation.type} label={getTypeLabel(solicitation.type)} />
                       <StatusBadge status={solicitation.status as any} />
                     </div>
                   </div>

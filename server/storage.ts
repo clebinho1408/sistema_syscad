@@ -9,7 +9,7 @@ import {
   type SolicitationType, type InsertSolicitationType
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, ne, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -29,6 +29,7 @@ export interface IStorage {
   getConductorByCpf(cpf: string): Promise<Conductor | undefined>;
   createConductor(data: InsertConductor): Promise<Conductor>;
   getSolicitationByConductorId(conductorId: string): Promise<Solicitation | undefined>;
+  hasPendingSolicitationByCpf(cpf: string, drivingSchoolId: string): Promise<boolean>;
 
   getSolicitation(id: string): Promise<SolicitationWithDetails | undefined>;
   getSolicitations(filters?: { drivingSchoolId?: string; status?: string; type?: string }): Promise<SolicitationWithDetails[]>;
@@ -139,6 +140,23 @@ export class DatabaseStorage implements IStorage {
   async getSolicitationByConductorId(conductorId: string): Promise<Solicitation | undefined> {
     const [solicitation] = await db.select().from(solicitations).where(eq(solicitations.conductorId, conductorId));
     return solicitation || undefined;
+  }
+
+  async hasPendingSolicitationByCpf(cpf: string, drivingSchoolId: string): Promise<boolean> {
+    const conductor = await this.getConductorByCpf(cpf);
+    if (!conductor) return false;
+    
+    const existingSolicitations = await db.select()
+      .from(solicitations)
+      .where(
+        and(
+          eq(solicitations.conductorId, conductor.id),
+          eq(solicitations.drivingSchoolId, drivingSchoolId),
+          ne(solicitations.status, "aprovada")
+        )
+      );
+    
+    return existingSolicitations.length > 0;
   }
 
   async getSolicitation(id: string): Promise<SolicitationWithDetails | undefined> {
