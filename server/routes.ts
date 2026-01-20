@@ -1,4 +1,4 @@
-import { conductors, solicitations } from "@shared/schema";
+import { conductors, solicitations, solicitationTypeEnum } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import type { Express } from "express";
@@ -280,6 +280,9 @@ export async function registerRoutes(
     }
   });
 
+  // Get valid solicitation type enum values from schema
+  const validSolicitationTypes = solicitationTypeEnum.enumValues;
+
   app.post("/api/solicitations", requireAuth, requireRole("autoescola"), async (req, res) => {
     try {
       const school = await storage.getDrivingSchoolByUserId(req.user!.id);
@@ -290,12 +293,26 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Autoescola bloqueada" });
       }
 
-      const {
+      let {
         type, cpf, nomeCompleto, nomeMae, nomePai, nacionalidade, rg, orgaoEmissor,
         ufEmissor, dataNascimento, cidadeNascimento, ufNascimento, cep, tipoLogradouro,
         logradouro, numero, complemento, bairro, cidade, uf, telefone1, dddCelular, telefone2, email,
         documents: documentsList
       } = req.body;
+
+      // Validate solicitation type - if not a valid enum, try to resolve from solicitation_types table
+      if (!validSolicitationTypes.includes(type)) {
+        // Try to find by ID in solicitation_types table and use its value
+        const solicitationType = await storage.getSolicitationType(type);
+        if (solicitationType && validSolicitationTypes.includes(solicitationType.value as any)) {
+          type = solicitationType.value;
+          console.log(`Resolved solicitation type from ID "${solicitationType.id}" to value "${type}"`);
+        } else {
+          return res.status(400).json({ 
+            message: `Tipo de solicitação inválido: "${type}". Por favor, selecione um tipo válido da lista.` 
+          });
+        }
+      }
 
       // Check for duplicate solicitation with same CPF for this driving school
       const hasPending = await storage.hasPendingSolicitationByCpf(cpf, school.id);

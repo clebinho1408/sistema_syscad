@@ -526,7 +526,7 @@ export class DatabaseStorage implements IStorage {
       console.log("Operator user created successfully.");
     }
 
-    // Seed default solicitation types
+    // Seed default solicitation types if none exist
     const existingTypes = await this.getSolicitationTypes();
     if (existingTypes.length === 0) {
       console.log("Creating default solicitation types...");
@@ -543,6 +543,8 @@ export class DatabaseStorage implements IStorage {
         await this.createSolicitationType(type);
       }
       console.log("Solicitation types created successfully.");
+    } else {
+      console.log(`Found ${existingTypes.length} existing solicitation types.`);
     }
   }
 }
