@@ -69,11 +69,12 @@ export default function SolicitationTypesPage() {
 
   const fixTypesMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/admin/fix-solicitation-types", {});
+      const response = await apiRequest("POST", "/api/admin/fix-solicitation-types", {});
+      return response.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/solicitation-types"] });
-      if (data.fixed.length > 0) {
+      if (data?.fixed?.length > 0) {
         toast({ title: "Tipos corrigidos com sucesso", description: `${data.fixed.length} tipo(s) corrigido(s)` });
       } else {
         toast({ title: "Nenhum tipo precisava de correção" });
