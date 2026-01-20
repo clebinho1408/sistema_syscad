@@ -284,22 +284,6 @@ export default function SolicitationDetailPage() {
     },
   });
 
-  const requestReanalysisMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", `/api/solicitations/${params?.id}/request-reanalysis`, {});
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/solicitations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "messages"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({ title: "Reanálise solicitada com sucesso!" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Erro ao solicitar reanálise", description: error.message, variant: "destructive" });
-    },
-  });
-
   const handlePenalty = () => {
     if (!penaltyReleaseDate) {
       toast({ title: "Data de liberação é obrigatória", variant: "destructive" });
@@ -1205,19 +1189,32 @@ export default function SolicitationDetailPage() {
                       <div className="space-y-3">
                         <h4 className="text-sm font-semibold">Anexos/Documentos</h4>
                         <div className="space-y-2">
-                          {docsList.map((doc) => (
-                            <div key={doc.id} className="flex items-center space-x-2 border rounded-md px-3 py-2 opacity-80 bg-muted/30">
-                              <Checkbox 
-                                id={`doc-${doc.id}`}
-                                checked={requestedDocs.includes(doc.id)}
-                                disabled={true}
-                                className="cursor-not-allowed"
-                              />
-                              <label htmlFor={`doc-${doc.id}`} className="text-sm leading-none cursor-not-allowed">
-                                {doc.label}
-                              </label>
-                            </div>
-                          ))}
+                          {docsList.map((doc) => {
+                            const isOutros = doc.id === "outros";
+                            const isAutoSelected = !isOutros;
+                            return (
+                              <div key={doc.id} className={`flex items-center space-x-2 border rounded-md px-3 py-2 ${isAutoSelected ? "opacity-80 bg-muted/30" : ""}`}>
+                                <Checkbox 
+                                  id={`doc-${doc.id}`}
+                                  checked={requestedDocs.includes(doc.id)}
+                                  disabled={isAutoSelected}
+                                  className={isAutoSelected ? "cursor-not-allowed" : ""}
+                                  onCheckedChange={(checked) => {
+                                    if (isOutros) {
+                                      if (checked) {
+                                        setRequestedDocs([...requestedDocs, doc.id]);
+                                      } else {
+                                        setRequestedDocs(requestedDocs.filter(d => d !== doc.id));
+                                      }
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`doc-${doc.id}`} className={`text-sm leading-none ${isAutoSelected ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                                  {doc.label}
+                                </label>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -1234,17 +1231,6 @@ export default function SolicitationDetailPage() {
                 </Dialog>
               )}
 
-              {solicitation.status === "pendente_correcao" && (
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => requestReanalysisMutation.mutate()}
-                  disabled={requestReanalysisMutation.isPending}
-                  data-testid="button-request-reanalysis"
-                >
-                  {requestReanalysisMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-                  SOLICITAR REANÁLISE
-                </Button>
-              )}
             </div>
           )}
         </div>

@@ -551,47 +551,6 @@ export async function registerRoutes(
     }
   });
 
-  // Request reanalysis (autoescola) - changes status from pendente_correcao to em_analise
-  app.post("/api/solicitations/:id/request-reanalysis", requireAuth, requireRole("autoescola"), async (req, res) => {
-    try {
-      const solicitation = await storage.getSolicitation(req.params.id);
-      if (!solicitation) {
-        return res.status(404).json({ message: "Solicitação não encontrada" });
-      }
-
-      if (solicitation.status !== "pendente_correcao") {
-        return res.status(400).json({ message: "Status inválido para reanálise" });
-      }
-
-      const school = await storage.getDrivingSchoolByUserId(req.user!.id);
-      if (!school || solicitation.drivingSchoolId !== school.id) {
-        return res.status(403).json({ message: "Acesso negado" });
-      }
-
-      const updated = await storage.updateSolicitation(req.params.id, {
-        status: "em_analise",
-      });
-
-      await storage.createChatMessage({
-        solicitationId: req.params.id,
-        senderId: req.user!.id,
-        message: `[SISTEMA] A autoescola solicitou reanálise. Status alterado para Em Análise.`,
-      });
-
-      await storage.createAuditLog({
-        userId: req.user!.id,
-        action: "request_reanalysis",
-        entity: "solicitation",
-        entityId: req.params.id,
-        details: `Autoescola solicitou reanálise`,
-      });
-
-      res.json(updated);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
   // Set penalty release date
   app.patch("/api/solicitations/:id/penalty", requireAuth, requireRole("operador", "admin"), async (req, res) => {
     try {
