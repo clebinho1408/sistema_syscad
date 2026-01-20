@@ -496,6 +496,36 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(solicitationTypes).where(eq(solicitationTypes.id, id)).returning();
     return result.length > 0;
   }
+
+  async seedInitialData(adminPassword: string): Promise<void> {
+    const existingAdmin = await this.getUserByUsername("admin");
+    if (!existingAdmin) {
+      console.log("Creating initial admin user...");
+      await this.createUser({
+        username: "admin",
+        password: adminPassword,
+        name: "Administrador",
+        email: "admin@syscad.local",
+        role: "admin",
+        isActive: true,
+      });
+      console.log("Admin user created successfully.");
+    }
+
+    const existingOperador = await this.getUserByUsername("operador");
+    if (!existingOperador) {
+      console.log("Creating initial operator user...");
+      await this.createUser({
+        username: "operador",
+        password: adminPassword,
+        name: "Operador",
+        email: "operador@syscad.local",
+        role: "operador",
+        isActive: true,
+      });
+      console.log("Operator user created successfully.");
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();

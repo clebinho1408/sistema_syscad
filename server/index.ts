@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { storage } from "./storage";
+import bcrypt from "bcryptjs";
 
 const app = express();
 const httpServer = createServer(app);
@@ -61,6 +63,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Seed initial data (admin and operator users)
+  const defaultAdminPassword = bcrypt.hashSync("Dg14@81986", 10);
+  await storage.seedInitialData(defaultAdminPassword);
+  
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
