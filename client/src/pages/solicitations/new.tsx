@@ -74,9 +74,10 @@ const UF_OPTIONS = [
 ];
 
 const UF_NASCIMENTO_OPTIONS = [
+  "ESTRANGEIRO",
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
   "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
-  "RS", "RO", "RR", "SC", "SP", "SE", "TO", "ESTRANGEIRO"
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO"
 ];
 
 const TIPO_LOGRADOURO_OPTIONS = [
@@ -727,6 +728,7 @@ export default function NewSolicitationPage() {
                           searchPlaceholder={isEstrangeiro ? "Buscar país..." : "Buscar cidade..."}
                           emptyMessage={isEstrangeiro ? "País não encontrado." : "Cidade não encontrada."}
                           disabled={!ufNascimento}
+                          allowCustom={false}
                           data-testid="select-cidade-nasc"
                         />
                       </FormControl>
@@ -894,6 +896,7 @@ export default function NewSolicitationPage() {
                           searchPlaceholder="Buscar cidade..."
                           emptyMessage="Cidade não encontrada."
                           disabled={!uf}
+                          allowCustom={false}
                           data-testid="select-cidade"
                         />
                       </FormControl>
