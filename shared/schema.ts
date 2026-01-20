@@ -6,6 +6,7 @@ import { z } from "zod";
 export const userRoleEnum = pgEnum("user_role", ["autoescola", "operador", "admin"]);
 export const solicitationStatusEnum = pgEnum("solicitation_status", ["em_analise", "pendente_correcao", "aprovada", "reprovada"]);
 export const solicitationTypeEnum = pgEnum("solicitation_type", ["novo_cadastro", "alteracao_dados", "atualizacao", "regularizacao"]);
+export const accessRequestStatusEnum = pgEnum("access_request_status", ["pending", "approved", "rejected"]);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -130,6 +131,19 @@ export const requiredDocuments = pgTable("required_documents", {
   isRequired: boolean("is_required").notNull().default(true),
 });
 
+export const accessRequests = pgTable("access_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  solicitationId: varchar("solicitation_id").notNull().references(() => solicitations.id),
+  requestedByUserId: varchar("requested_by_user_id").notNull().references(() => users.id),
+  fields: text("fields").array(),
+  documents: text("documents").array(),
+  status: accessRequestStatusEnum("status").notNull().default("pending"),
+  rejectionReason: text("rejection_reason"),
+  decidedByUserId: varchar("decided_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  decidedAt: timestamp("decided_at"),
+});
+
 export const usersRelations = relations(users, ({ one, many }) => ({
   drivingSchool: one(drivingSchools, {
     fields: [users.id],
@@ -190,6 +204,21 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   }),
 }));
 
+export const accessRequestsRelations = relations(accessRequests, ({ one }) => ({
+  solicitation: one(solicitations, {
+    fields: [accessRequests.solicitationId],
+    references: [solicitations.id],
+  }),
+  requestedBy: one(users, {
+    fields: [accessRequests.requestedByUserId],
+    references: [users.id],
+  }),
+  decidedBy: one(users, {
+    fields: [accessRequests.decidedByUserId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertDrivingSchoolSchema = createInsertSchema(drivingSchools).omit({ id: true, createdAt: true });
 export const insertConductorSchema = createInsertSchema(conductors).omit({ id: true, createdAt: true });
@@ -198,6 +227,7 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({ id: tru
 export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({ id: true, createdAt: true });
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
 export const insertRequiredDocumentSchema = createInsertSchema(requiredDocuments).omit({ id: true });
+export const insertAccessRequestSchema = createInsertSchema(accessRequests).omit({ id: true, createdAt: true, decidedAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -215,6 +245,8 @@ export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertRequiredDocument = z.infer<typeof insertRequiredDocumentSchema>;
 export type RequiredDocument = typeof requiredDocuments.$inferSelect;
+export type InsertAccessRequest = z.infer<typeof insertAccessRequestSchema>;
+export type AccessRequest = typeof accessRequests.$inferSelect;
 
 export const loginSchema = z.object({
   username: z.string().min(1, "Usuário é obrigatório"),
