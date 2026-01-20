@@ -105,8 +105,8 @@ export function AppSidebar() {
             <Shield className="w-6 h-6 text-sidebar-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-semibold text-sm leading-none text-sidebar-foreground">DETRAN</h1>
-            <span className="text-xs text-sidebar-foreground/70">Sistema de Solicitações</span>
+            <h1 className="font-semibold text-sm leading-none text-sidebar-foreground">SysCad</h1>
+            <span className="text-xs text-sidebar-foreground/70">Sistema de Cadastro</span>
           </div>
         </div>
       </SidebarHeader>

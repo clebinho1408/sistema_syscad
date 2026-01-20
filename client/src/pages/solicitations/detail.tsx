@@ -101,6 +101,7 @@ export default function SolicitationDetailPage() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [isPenaltyDialogOpen, setIsPenaltyDialogOpen] = useState(false);
   const [penaltyReleaseDate, setPenaltyReleaseDate] = useState("");
+  const [openedDocs, setOpenedDocs] = useState<Set<string>>(new Set());
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const previousMessagesCount = useRef<number>(0);
@@ -350,9 +351,13 @@ export default function SolicitationDetailPage() {
   }
 
   const isFinalized = solicitation.status === "aprovada" || solicitation.status === "cadastro_finalizado";
+  const isAguardandoPenalidade = solicitation.status === "aguardando_penalidade";
   const canEdit = user?.role === "operador" || user?.role === "admin";
   const isAutoescola = user?.role === "autoescola";
   const isPendente = solicitation.status === "pendente_correcao";
+  
+  // Check if all documents have been opened (if there are documents)
+  const allDocsOpened = !documents || documents.length === 0 || documents.every(doc => openedDocs.has(doc.id));
 
   const fieldsList = [
     { id: "nomeCompleto", label: "Nome Civil" },
@@ -423,7 +428,7 @@ export default function SolicitationDetailPage() {
         </div>
       </div>
 
-        {(user?.role === "operador" || user?.role === "admin") && !isFinalized && (
+        {(user?.role === "operador" || user?.role === "admin") && !isFinalized && !isAguardandoPenalidade && (
           <Card className="mb-6">
             <CardHeader className="py-3 border-b bg-muted/30">
               <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -433,15 +438,22 @@ export default function SolicitationDetailPage() {
             </CardHeader>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Button 
-                  onClick={handleCadastrado} 
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  disabled={updateStatusMutation.isPending}
-                  data-testid="button-approve"
-                >
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Cadastro Finalizado
-                </Button>
+                <div className="space-y-1">
+                  <Button 
+                    onClick={handleCadastrado} 
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    disabled={updateStatusMutation.isPending || !allDocsOpened}
+                    data-testid="button-approve"
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Cadastro Finalizado
+                  </Button>
+                  {!allDocsOpened && documents && documents.length > 0 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Abra todos os anexos ({openedDocs.size}/{documents.length})
+                    </p>
+                  )}
+                </div>
 
                 <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
                   <DialogTrigger asChild>
@@ -896,11 +908,15 @@ export default function SolicitationDetailPage() {
                       <p className="text-sm text-muted-foreground">{doc.fileType}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {canEdit && openedDocs.has(doc.id) && (
+                        <Check className="w-4 h-4 text-green-600" />
+                      )}
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={() => {
                           setSelectedDoc(doc);
+                          setOpenedDocs(prev => new Set(prev).add(doc.id));
                         }}
                         data-testid={`button-view-${doc.id}`}
                       >
@@ -1094,10 +1110,10 @@ export default function SolicitationDetailPage() {
                     placeholder="Digite uma mensagem..." 
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    disabled={isFinalized}
+                    disabled={solicitation.status === "aprovada"}
                     data-testid="input-chat-message-popup"
                   />
-                  <Button type="submit" size="icon" disabled={isFinalized || sendMessageMutation.isPending} data-testid="button-send-message-popup">
+                  <Button type="submit" size="icon" disabled={solicitation.status === "aprovada" || sendMessageMutation.isPending} data-testid="button-send-message-popup">
                     {sendMessageMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </Button>
                 </form>
@@ -1105,7 +1121,7 @@ export default function SolicitationDetailPage() {
             </DialogContent>
           </Dialog>
 
-          {isAutoescola && !isFinalized && (
+          {isAutoescola && solicitation.status !== "aprovada" && (
             <div className="space-y-3">
               {solicitation.accessGranted ? (
                 <Link href={`/solicitations/${solicitation.id}/edit`}>

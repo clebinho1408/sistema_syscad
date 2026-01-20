@@ -61,7 +61,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   );
 }
 
-type SolicitationType = "novo_cadastro" | "alteracao_dados" | "atualizacao" | "regularizacao";
+type SolicitationType = "novo_cadastro" | "alteracao_dados" | "atualizacao" | "regularizacao" | "transferencia_renovacao" | "reinicio" | "transferencia" | "renovacao" | "adicao_categoria" | "primeira_habilitacao" | "mudanca_categoria";
 
 const typeConfig: Record<SolicitationType, { label: string; className: string }> = {
   novo_cadastro: {
@@ -79,6 +79,34 @@ const typeConfig: Record<SolicitationType, { label: string; className: string }>
   regularizacao: {
     label: "Regularização",
     className: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800",
+  },
+  transferencia_renovacao: {
+    label: "Transferência + Renovação",
+    className: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800",
+  },
+  reinicio: {
+    label: "Reinício",
+    className: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200 dark:border-rose-800",
+  },
+  transferencia: {
+    label: "Transferência",
+    className: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800",
+  },
+  renovacao: {
+    label: "Renovação",
+    className: "bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-400 border-lime-200 dark:border-lime-800",
+  },
+  adicao_categoria: {
+    label: "Adição Categoria",
+    className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+  },
+  primeira_habilitacao: {
+    label: "Primeira Habilitação",
+    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
+  },
+  mudanca_categoria: {
+    label: "Mudança de Categoria",
+    className: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-400 border-fuchsia-200 dark:border-fuchsia-800",
   },
 };
 

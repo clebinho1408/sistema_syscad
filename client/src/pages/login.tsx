@@ -42,8 +42,8 @@ export default function LoginPage() {
             <Shield className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-semibold text-lg leading-none">DETRAN</h1>
-            <span className="text-xs text-muted-foreground">Sistema de Solicitações</span>
+            <h1 className="font-semibold text-lg leading-none">SysCad</h1>
+            <span className="text-xs text-muted-foreground">Sistema de Cadastro</span>
           </div>
         </div>
         <ThemeToggle />
@@ -109,14 +109,14 @@ export default function LoginPage() {
 
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
-              Entre em contato com o DETRAN para solicitar acesso ao sistema.
+              Entre em contato com a administração para solicitar acesso ao sistema.
             </p>
           </div>
         </div>
       </main>
 
       <footer className="p-4 border-t text-center text-sm text-muted-foreground">
-        Sistema de Gestão de Solicitações DETRAN - Todos os direitos reservados
+        SysCad - Sistema de Cadastro - Todos os direitos reservados
       </footer>
     </div>
   );

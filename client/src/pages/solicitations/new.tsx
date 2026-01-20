@@ -139,7 +139,7 @@ function validateCpf(cpf: string): boolean {
 }
 
 const solicitationSchema = z.object({
-  type: z.enum(["novo_cadastro", "alteracao_dados", "atualizacao", "regularizacao"]),
+  type: z.enum(["transferencia_renovacao", "reinicio", "transferencia", "renovacao", "adicao_categoria", "primeira_habilitacao", "mudanca_categoria"]),
   cpf: z.string().min(14, "CPF inválido").refine((val) => validateCpf(val), "CPF inválido"),
   nomeCompleto: z.string().min(2, "Nome é obrigatório").transform(toUpperWithoutAccents),
   nomeSocial: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
@@ -210,7 +210,7 @@ export default function NewSolicitationPage() {
   const form = useForm<SolicitationFormData>({
     resolver: zodResolver(solicitationSchema),
     defaultValues: {
-      type: "novo_cadastro",
+      type: "primeira_habilitacao",
       cpf: "",
       nomeCompleto: "",
       nomeSocial: "",
@@ -274,6 +274,8 @@ export default function NewSolicitationPage() {
       
       if (data.exists && data.differentSchool) {
         setCpfError("Este Candidato/Condutor já está cadastrado em outra Autoescola, favor solicitar via Chat a Administração a transferência dessa Solicitação.");
+      } else if (data.exists && data.sameSchool) {
+        setCpfError("Já existe uma solicitação com este CPF para sua autoescola.");
       }
     } catch {
       console.error("Erro ao validar CPF");
@@ -458,10 +460,13 @@ export default function NewSolicitationPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="novo_cadastro">Novo Cadastro de Candidato/Condutor</SelectItem>
-                        <SelectItem value="alteracao_dados">Alteração de Dados Cadastrais</SelectItem>
-                        <SelectItem value="atualizacao">Atualização Cadastral</SelectItem>
-                        <SelectItem value="regularizacao">Regularização</SelectItem>
+                        <SelectItem value="transferencia_renovacao">Transferência + Renovação</SelectItem>
+                        <SelectItem value="reinicio">Reinício</SelectItem>
+                        <SelectItem value="transferencia">Transferência</SelectItem>
+                        <SelectItem value="renovacao">Renovação</SelectItem>
+                        <SelectItem value="adicao_categoria">Adição Categoria</SelectItem>
+                        <SelectItem value="primeira_habilitacao">Primeira Habilitação</SelectItem>
+                        <SelectItem value="mudanca_categoria">Mudança de Categoria</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

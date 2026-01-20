@@ -25,9 +25,12 @@ export default function DashboardPage() {
     queryKey: ["/api/dashboard/stats"],
   });
 
-  const { data: recentSolicitations, isLoading: solicitationsLoading } = useQuery<SolicitationWithDetails[]>({
-    queryKey: ["/api/solicitations", { limit: 5 }],
+  const { data: allSolicitations, isLoading: solicitationsLoading } = useQuery<SolicitationWithDetails[]>({
+    queryKey: ["/api/solicitations"],
   });
+  
+  // Get the 5 most recent solicitations
+  const recentSolicitations = allSolicitations?.slice(0, 5);
 
   if (!user) return null;
 
@@ -82,7 +85,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+            <CardTitle className="text-sm font-medium">Pendente de Correção</CardTitle>
             <AlertTriangle className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
@@ -96,7 +99,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aprovadas</CardTitle>
+            <CardTitle className="text-sm font-medium">Cadastro Finalizado</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>

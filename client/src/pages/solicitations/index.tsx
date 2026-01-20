@@ -90,8 +90,8 @@ export default function SolicitationsPage() {
                 <SelectItem value="all">Todos os status</SelectItem>
                 <SelectItem value="em_analise">Em Análise</SelectItem>
                 <SelectItem value="pendente_correcao">Pendente de Correção</SelectItem>
-                <SelectItem value="aprovada">Aprovada</SelectItem>
-                <SelectItem value="reprovada">Reprovada</SelectItem>
+                <SelectItem value="cadastro_finalizado">Cadastro Finalizado</SelectItem>
+                <SelectItem value="aguardando_penalidade">Aguardando Penalidade</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -100,10 +100,13 @@ export default function SolicitationsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os tipos</SelectItem>
-                <SelectItem value="novo_cadastro">Novo Cadastro</SelectItem>
-                <SelectItem value="alteracao_dados">Alteração de Dados</SelectItem>
-                <SelectItem value="atualizacao">Atualização</SelectItem>
-                <SelectItem value="regularizacao">Regularização</SelectItem>
+                <SelectItem value="transferencia_renovacao">Transferência + Renovação</SelectItem>
+                <SelectItem value="reinicio">Reinício</SelectItem>
+                <SelectItem value="transferencia">Transferência</SelectItem>
+                <SelectItem value="renovacao">Renovação</SelectItem>
+                <SelectItem value="adicao_categoria">Adição Categoria</SelectItem>
+                <SelectItem value="primeira_habilitacao">Primeira Habilitação</SelectItem>
+                <SelectItem value="mudanca_categoria">Mudança de Categoria</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -108,8 +108,8 @@ export default function RegisterPage() {
             <Shield className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-semibold text-lg leading-none">DETRAN</h1>
-            <span className="text-xs text-muted-foreground">Sistema de Solicitações</span>
+            <h1 className="font-semibold text-lg leading-none">SysCad</h1>
+            <span className="text-xs text-muted-foreground">Sistema de Cadastro</span>
           </div>
         </div>
         <ThemeToggle />

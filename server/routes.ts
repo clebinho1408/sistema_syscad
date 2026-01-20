@@ -164,22 +164,26 @@ export async function registerRoutes(
       const school = await storage.getDrivingSchoolByUserId(req.user!.id);
       
       if (!school) {
-        return res.json({ exists: false, differentSchool: false });
+        return res.json({ exists: false, differentSchool: false, sameSchool: false });
       }
 
       const existingConductor = await storage.getConductorByCpf(cpf);
       
       if (!existingConductor) {
-        return res.json({ exists: false, differentSchool: false });
+        return res.json({ exists: false, differentSchool: false, sameSchool: false });
       }
 
       const existingSolicitation = await storage.getSolicitationByConductorId(existingConductor.id);
       
       if (existingSolicitation && existingSolicitation.drivingSchoolId !== school.id) {
-        return res.json({ exists: true, differentSchool: true });
+        return res.json({ exists: true, differentSchool: true, sameSchool: false });
       }
 
-      return res.json({ exists: true, differentSchool: false });
+      if (existingSolicitation && existingSolicitation.drivingSchoolId === school.id) {
+        return res.json({ exists: true, differentSchool: false, sameSchool: true });
+      }
+
+      return res.json({ exists: true, differentSchool: false, sameSchool: false });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -633,14 +637,26 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Pedido de acesso não encontrado" });
       }
 
-      await storage.updateSolicitation(updated.solicitationId, {
-        accessGranted: true,
-      });
+      // Get solicitation to check if status needs to change
+      const solicitation = await storage.getSolicitation(updated.solicitationId);
+      const updateData: any = { accessGranted: true };
+      
+      // If status is cadastro_finalizado, change to em_analise
+      if (solicitation && solicitation.status === "cadastro_finalizado") {
+        updateData.status = "em_analise";
+      }
+
+      await storage.updateSolicitation(updated.solicitationId, updateData);
+
+      let chatMessage = `[ACESSO APROVADO] O pedido de acesso para correção foi aprovado.`;
+      if (solicitation && solicitation.status === "cadastro_finalizado") {
+        chatMessage += ` Status alterado para Em Análise.`;
+      }
 
       await storage.createChatMessage({
         solicitationId: updated.solicitationId,
         senderId: req.user!.id,
-        message: `[ACESSO APROVADO] O pedido de acesso para correção foi aprovado.`,
+        message: chatMessage,
       });
 
       await storage.createAuditLog({
