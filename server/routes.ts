@@ -1094,6 +1094,54 @@ export async function registerRoutes(
     }
   });
 
+  // Admin tool to fix invalid solicitation type values
+  app.post("/api/admin/fix-solicitation-types", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const labelToValue: Record<string, string> = {
+        "Transferência + Renovação": "transferencia_renovacao",
+        "Reinício": "reinicio",
+        "Transferência": "transferencia",
+        "Renovação": "renovacao",
+        "Adição Categoria": "adicao_categoria",
+        "Primeira Habilitação": "primeira_habilitacao",
+        "Mudança de Categoria": "mudanca_categoria",
+      };
+
+      const types = await storage.getSolicitationTypes();
+      const fixed: string[] = [];
+      const notFixed: string[] = [];
+
+      for (const type of types) {
+        if (!validSolicitationTypes.includes(type.value as any)) {
+          const correctValue = labelToValue[type.label];
+          if (correctValue) {
+            await storage.updateSolicitationType(type.id, { value: correctValue });
+            fixed.push(`${type.label}: "${type.value}" -> "${correctValue}"`);
+          } else {
+            notFixed.push(`${type.label}: "${type.value}" (não reconhecido)`);
+          }
+        }
+      }
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "fix",
+        entity: "solicitation_types",
+        entityId: null,
+        details: `Tipos corrigidos: ${fixed.length}, não corrigidos: ${notFixed.length}`,
+      });
+
+      res.json({ 
+        message: "Correção concluída",
+        fixed,
+        notFixed,
+        total: types.length
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/solicitation-types", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const { value, label, isActive, sortOrder } = req.body;
