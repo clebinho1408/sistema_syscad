@@ -326,10 +326,12 @@ export async function registerRoutes(
       const updated = await storage.updateSolicitation(req.params.id, updateData);
 
       const statusLabels: Record<string, string> = {
-        "aprovada": "CADASTRADO",
+        "aprovada": "APROVADA",
         "pendente_correcao": "PENDENTE",
         "em_analise": "EM ANALISE",
         "reprovada": "REPROVADA",
+        "cadastro_finalizado": "CADASTRO FINALIZADO",
+        "aguardando_penalidade": "AGUARDANDO PENALIDADE",
       };
 
       if (sendChatNotification) {
@@ -371,9 +373,14 @@ export async function registerRoutes(
       const { id: _, ...conductorUpdateData } = conductorData;
       await db.update(conductors).set(conductorUpdateData).where(eq(conductors.id, solicitation.conductorId));
       
-      // Handle documents if any
+      // Handle documents if any - replace old documents with new ones for each category
       if (documentsList && Array.isArray(documentsList)) {
         for (const doc of documentsList) {
+          // Delete old documents in the same category
+          if (doc.category) {
+            await storage.deleteDocumentsByCategory(solicitation.id, doc.category);
+          }
+          // Create new document
           await storage.createDocument({
             solicitationId: solicitation.id,
             fileName: doc.name,

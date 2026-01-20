@@ -271,7 +271,7 @@ export default function SolicitationDetailPage() {
   };
 
   const handleCadastrado = () => {
-    updateStatusMutation.mutate({ status: "aprovada", sendChatNotification: true });
+    updateStatusMutation.mutate({ status: "cadastro_finalizado", sendChatNotification: true });
   };
 
   const handlePendente = () => {
@@ -321,7 +321,7 @@ export default function SolicitationDetailPage() {
     );
   }
 
-  const isFinalized = solicitation.status === "aprovada" || solicitation.status === "reprovada";
+  const isFinalized = solicitation.status === "aprovada" || solicitation.status === "cadastro_finalizado";
   const canEdit = user?.role === "operador" || user?.role === "admin";
   const isAutoescola = user?.role === "autoescola";
   const isPendente = solicitation.status === "pendente_correcao";
@@ -455,7 +455,7 @@ export default function SolicitationDetailPage() {
                 <Button 
                   variant="destructive" 
                   className="w-full"
-                  onClick={() => updateStatusMutation.mutate({ status: "reprovada", sendChatNotification: true })}
+                  onClick={() => updateStatusMutation.mutate({ status: "aguardando_penalidade", sendChatNotification: true })}
                   disabled={updateStatusMutation.isPending}
                   data-testid="button-reject"
                 >
@@ -654,17 +654,9 @@ export default function SolicitationDetailPage() {
                             <CopyableField label="Filiação Afetiva 2" value={solicitation.conductor.filiacaoAfetiva2 || ""} fieldName="filiacaoAfetiva2" copiedFields={copiedFields} onCopy={copyToClipboard} />
                           </div>
                         )}
-                        <CopyableField label="Nacionalidade" value={solicitation.conductor.nacionalidade} fieldName="nacionalidade" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         <CopyableField label="Data Nascimento" value={format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                        <CopyableField label="Cidade Nascimento" value={solicitation.conductor.cidadeNascimento} fieldName="cidadeNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                        <CopyableField label="UF Nascimento" value={solicitation.conductor.ufNascimento} fieldName="ufNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                        {solicitation.conductor.sexo && (
-                          <CopyableField label="Sexo" value={solicitation.conductor.sexo === "M" ? "Masculino" : "Feminino"} fieldName="sexo" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                        )}
-                        <CopyableField label="Tipo de Documento" value={solicitation.conductor.tipoDocumento || "RG"} fieldName="tipoDocumento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         <CopyableField label="Identidade" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         <CopyableField label="Órgão Emissor" value={solicitation.conductor.orgaoEmissor} fieldName="orgaoEmissor" copiedFields={copiedFields} onCopy={copyToClipboard} />
-                        <CopyableField label="UF Emissor" value={solicitation.conductor.ufEmissor} fieldName="ufEmissor" copiedFields={copiedFields} onCopy={copyToClipboard} />
                       </div>
                     </div>
                     <DialogFooter>

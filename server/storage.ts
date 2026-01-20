@@ -37,6 +37,7 @@ export interface IStorage {
   getDocuments(solicitationId: string): Promise<Document[]>;
   createDocument(data: InsertDocument): Promise<Document>;
   updateDocument(id: string, data: Partial<InsertDocument>): Promise<Document | undefined>;
+  deleteDocumentsByCategory(solicitationId: string, category: string): Promise<void>;
 
   getChatMessages(solicitationId: string): Promise<ChatMessageWithSender[]>;
   createChatMessage(data: InsertChatMessage): Promise<ChatMessage>;
@@ -214,6 +215,15 @@ export class DatabaseStorage implements IStorage {
   async updateDocument(id: string, data: Partial<InsertDocument>): Promise<Document | undefined> {
     const [doc] = await db.update(documents).set(data).where(eq(documents.id, id)).returning();
     return doc || undefined;
+  }
+
+  async deleteDocumentsByCategory(solicitationId: string, category: string): Promise<void> {
+    await db.delete(documents).where(
+      and(
+        eq(documents.solicitationId, solicitationId),
+        eq(documents.category, category)
+      )
+    );
   }
 
   async getChatMessages(solicitationId: string): Promise<ChatMessageWithSender[]> {
