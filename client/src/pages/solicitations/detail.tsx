@@ -1149,6 +1149,70 @@ export default function SolicitationDetailPage() {
                     </div>
                   </div>
 
+                  {/* Metadados do PDF */}
+                  {authenticityResult.metadatasPdf && Object.keys(authenticityResult.metadatasPdf).length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Metadados do PDF
+                      </h4>
+                      <div className="grid gap-1 text-sm bg-muted/30 p-3 rounded-lg">
+                        {authenticityResult.metadatasPdf.titulo && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Título:</span>
+                            <span className="font-mono text-xs max-w-[60%] truncate">{authenticityResult.metadatasPdf.titulo}</span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.autor && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Autor:</span>
+                            <span className={`font-mono text-xs ${authenticityResult.metadatasPdf.autor.toLowerCase().includes('canva') || authenticityResult.metadatasPdf.autor.toLowerCase().includes('grafica') ? 'text-red-500 font-bold' : ''}`}>
+                              {authenticityResult.metadatasPdf.autor}
+                            </span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.criador && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Software Criador:</span>
+                            <span className={`font-mono text-xs ${authenticityResult.metadatasPdf.criador.toLowerCase().includes('canva') ? 'text-red-500 font-bold' : ''}`}>
+                              {authenticityResult.metadatasPdf.criador}
+                            </span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.produtor && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Produtor:</span>
+                            <span className="font-mono text-xs">{authenticityResult.metadatasPdf.produtor}</span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.palavrasChave && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Palavras-chave:</span>
+                            <span className="font-mono text-xs max-w-[60%] truncate">{authenticityResult.metadatasPdf.palavrasChave}</span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.dataCriacao && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Criado em:</span>
+                            <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataCriacao).toLocaleString('pt-BR')}</span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.dataModificacao && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Modificado em:</span>
+                            <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataModificacao).toLocaleString('pt-BR')}</span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.numeroPaginas && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Páginas:</span>
+                            <span className="font-mono text-xs">{authenticityResult.metadatasPdf.numeroPaginas}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Observações */}
                   {authenticityResult.observacoes && (
                     <div className="space-y-2">

@@ -8,7 +8,7 @@ import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
 import passport from "passport";
 import { WebSocketServer, WebSocket } from "ws";
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
-import { analyzeDocument, analyzeDocumentAuthenticity, isGeminiConfigured } from "./gemini";
+import { analyzeDocument, analyzeDocumentAuthenticity, extractPdfMetadata, isGeminiConfigured, PdfMetadata } from "./gemini";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -701,7 +701,9 @@ export async function registerRoutes(
       }
 
       let imageBase64: string | null = null;
+      let fileBuffer: Buffer | null = null;
       let mimeType = document.fileType || "image/jpeg";
+      let pdfMetadata: PdfMetadata | undefined;
 
       // Get document content from object storage or base64
       if (document.fileKey) {
@@ -711,20 +713,34 @@ export async function registerRoutes(
           for await (const chunk of objectFile.createReadStream()) {
             chunks.push(Buffer.from(chunk));
           }
-          imageBase64 = Buffer.concat(chunks).toString("base64");
+          fileBuffer = Buffer.concat(chunks);
+          imageBase64 = fileBuffer.toString("base64");
         } catch (error) {
           console.error("Error fetching from object storage:", error);
           return res.status(404).json({ error: "Arquivo não encontrado no armazenamento" });
         }
       } else if (document.fileData) {
-        imageBase64 = document.fileData.split(",")[1] || document.fileData;
+        const base64Data = document.fileData.split(",")[1] || document.fileData;
+        imageBase64 = base64Data;
+        fileBuffer = Buffer.from(base64Data, "base64");
       }
 
-      if (!imageBase64) {
+      if (!imageBase64 || !fileBuffer) {
         return res.status(404).json({ error: "Conteúdo do documento não disponível" });
       }
 
-      const result = await analyzeDocumentAuthenticity(imageBase64, mimeType);
+      // Extract PDF metadata if the document is a PDF
+      if (mimeType === "application/pdf") {
+        try {
+          pdfMetadata = await extractPdfMetadata(fileBuffer);
+          console.log("PDF metadata extracted:", pdfMetadata);
+        } catch (error) {
+          console.error("Error extracting PDF metadata:", error);
+          // Continue without metadata
+        }
+      }
+
+      const result = await analyzeDocumentAuthenticity(imageBase64, mimeType, pdfMetadata);
       
       // Log the authenticity check
       await storage.createAuditLog({

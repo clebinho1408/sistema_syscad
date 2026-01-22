@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { PDFDocument } from "pdf-lib";
 
 let ai: GoogleGenAI | null = null;
 
@@ -150,6 +151,52 @@ export function isGeminiConfigured(): boolean {
   return !!process.env.GEMINI_API_KEY;
 }
 
+export interface PdfMetadata {
+  titulo?: string;
+  autor?: string;
+  assunto?: string;
+  palavrasChave?: string;
+  criador?: string;
+  produtor?: string;
+  dataCriacao?: string;
+  dataModificacao?: string;
+  versaoPdf?: string;
+  numeroPaginas?: number;
+}
+
+export async function extractPdfMetadata(pdfBuffer: Buffer): Promise<PdfMetadata> {
+  try {
+    const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+    
+    const titulo = pdfDoc.getTitle();
+    const autor = pdfDoc.getAuthor();
+    const assunto = pdfDoc.getSubject();
+    const palavrasChave = pdfDoc.getKeywords();
+    const criador = pdfDoc.getCreator();
+    const produtor = pdfDoc.getProducer();
+    const dataCriacao = pdfDoc.getCreationDate();
+    const dataModificacao = pdfDoc.getModificationDate();
+    
+    const metadata: PdfMetadata = {
+      numeroPaginas: pdfDoc.getPageCount(),
+    };
+    
+    if (titulo) metadata.titulo = titulo;
+    if (autor) metadata.autor = autor;
+    if (assunto) metadata.assunto = assunto;
+    if (palavrasChave) metadata.palavrasChave = palavrasChave;
+    if (criador) metadata.criador = criador;
+    if (produtor) metadata.produtor = produtor;
+    if (dataCriacao) metadata.dataCriacao = dataCriacao.toISOString();
+    if (dataModificacao) metadata.dataModificacao = dataModificacao.toISOString();
+    
+    return metadata;
+  } catch (error) {
+    console.error("Failed to extract PDF metadata:", error);
+    return {};
+  }
+}
+
 export interface AuthenticityAnalysis {
   nivelRisco: "BAIXO" | "MEDIO" | "ALTO";
   pontuacaoConfianca: number;
@@ -160,13 +207,112 @@ export interface AuthenticityAnalysis {
     qualidadeImagem: { status: string; descricao: string };
     elementosSeguranca: { status: string; descricao: string };
     consistenciaDados: { status: string; descricao: string };
+    metadados?: { status: string; descricao: string };
   };
   recomendacao: string;
   observacoes: string;
+  metadatasPdf?: PdfMetadata;
 }
 
-export async function analyzeDocumentAuthenticity(imageBase64: string, mimeType: string): Promise<AuthenticityAnalysis> {
+export async function analyzeDocumentAuthenticity(
+  imageBase64: string, 
+  mimeType: string,
+  pdfMetadata?: PdfMetadata
+): Promise<AuthenticityAnalysis> {
   try {
+    // Lista de softwares suspeitos para criação de documentos oficiais
+    const suspiciousSoftware = [
+      "canva", "photoshop", "gimp", "paint", "word", "libreoffice", 
+      "google docs", "pixlr", "fotor", "befunky", "picmonkey",
+      "casa das impressões", "gráfica", "grafica"
+    ];
+    
+    let metadataWarnings: string[] = [];
+    let metadataAnalysis = { status: "NAO_DISPONIVEL", descricao: "Metadados não disponíveis para análise" };
+    
+    if (pdfMetadata) {
+      // Analisa o software criador
+      const criador = (pdfMetadata.criador || "").toLowerCase();
+      const produtor = (pdfMetadata.produtor || "").toLowerCase();
+      const autor = (pdfMetadata.autor || "").toLowerCase();
+      
+      for (const software of suspiciousSoftware) {
+        if (criador.includes(software) || produtor.includes(software)) {
+          metadataWarnings.push(`PDF criado com software suspeito: ${pdfMetadata.criador || pdfMetadata.produtor}`);
+          break;
+        }
+      }
+      
+      // Verifica autor suspeito
+      if (autor && (autor.includes("grafica") || autor.includes("impressões") || autor.includes("impressoes"))) {
+        metadataWarnings.push(`Autor do PDF suspeito: ${pdfMetadata.autor}`);
+      }
+      
+      // Verifica se foi modificado recentemente (documentos oficiais geralmente não são modificados após emissão)
+      if (pdfMetadata.dataCriacao && pdfMetadata.dataModificacao) {
+        const criacao = new Date(pdfMetadata.dataCriacao);
+        const modificacao = new Date(pdfMetadata.dataModificacao);
+        const diffMinutes = (modificacao.getTime() - criacao.getTime()) / (1000 * 60);
+        
+        if (diffMinutes > 5) {
+          metadataWarnings.push(`PDF modificado ${Math.round(diffMinutes)} minutos após criação`);
+        }
+      }
+      
+      // Verifica data de criação muito recente para documentos que deveriam ser antigos
+      if (pdfMetadata.dataCriacao) {
+        const criacao = new Date(pdfMetadata.dataCriacao);
+        const agora = new Date();
+        const diffDays = (agora.getTime() - criacao.getTime()) / (1000 * 60 * 60 * 24);
+        
+        if (diffDays < 1) {
+          metadataWarnings.push(`PDF criado nas últimas 24 horas (${criacao.toLocaleDateString('pt-BR')})`);
+        }
+      }
+      
+      // Verifica palavras-chave suspeitas
+      if (pdfMetadata.palavrasChave) {
+        const keywords = pdfMetadata.palavrasChave.toLowerCase();
+        if (keywords.includes("teste") || keywords.includes("falso") || keywords.includes("fake")) {
+          metadataWarnings.push(`Palavras-chave suspeitas no PDF: ${pdfMetadata.palavrasChave}`);
+        }
+      }
+      
+      // Define status dos metadados
+      if (metadataWarnings.length === 0) {
+        metadataAnalysis = { status: "OK", descricao: "Metadados do PDF não apresentam sinais de adulteração" };
+      } else if (metadataWarnings.length === 1) {
+        metadataAnalysis = { status: "SUSPEITO", descricao: metadataWarnings.join("; ") };
+      } else {
+        metadataAnalysis = { status: "IRREGULAR", descricao: metadataWarnings.join("; ") };
+      }
+    }
+
+    let metadataSection = "";
+    if (pdfMetadata && Object.keys(pdfMetadata).length > 0) {
+      metadataSection = `
+
+6. **METADADOS DO PDF (INFORMAÇÃO CRÍTICA):**
+   Os seguintes metadados foram extraídos do arquivo PDF. ANALISE-OS CUIDADOSAMENTE:
+   ${pdfMetadata.titulo ? `- Título: "${pdfMetadata.titulo}"` : ""}
+   ${pdfMetadata.autor ? `- Autor: "${pdfMetadata.autor}"` : ""}
+   ${pdfMetadata.criador ? `- Software criador: "${pdfMetadata.criador}"` : ""}
+   ${pdfMetadata.produtor ? `- Produtor: "${pdfMetadata.produtor}"` : ""}
+   ${pdfMetadata.palavrasChave ? `- Palavras-chave: "${pdfMetadata.palavrasChave}"` : ""}
+   ${pdfMetadata.dataCriacao ? `- Data de criação: ${new Date(pdfMetadata.dataCriacao).toLocaleString('pt-BR')}` : ""}
+   ${pdfMetadata.dataModificacao ? `- Última modificação: ${new Date(pdfMetadata.dataModificacao).toLocaleString('pt-BR')}` : ""}
+   ${pdfMetadata.numeroPaginas ? `- Número de páginas: ${pdfMetadata.numeroPaginas}` : ""}
+   
+   SINAIS DE ALERTA NOS METADADOS:
+   - Software como Canva, Photoshop, GIMP, Paint = MUITO SUSPEITO (documentos oficiais usam Adobe LiveCycle, sistemas governamentais)
+   - Autor com nome de gráfica/impressora = SUSPEITO
+   - Palavras-chave estranhas ou aleatórias = SUSPEITO
+   - Data de criação muito recente para documento que deveria ser antigo = SUSPEITO
+   - Modificação após criação = SUSPEITO (documentos oficiais geralmente não são editados)
+   
+   ${metadataWarnings.length > 0 ? `⚠️ ALERTAS DETECTADOS: ${metadataWarnings.join("; ")}` : ""}`;
+    }
+
     const systemPrompt = `Você é um especialista forense em análise de documentos brasileiros, especializado em detectar adulterações e falsificações.
 
 Analise esta imagem de documento e verifique sinais de adulteração ou falsificação. Examine cuidadosamente:
@@ -196,6 +342,7 @@ Analise esta imagem de documento e verifique sinais de adulteração ou falsific
    - Formatos de data incorretos
    - Números de documento com formato inválido
    - Informações contraditórias
+${metadataSection}
 
 Responda APENAS com JSON válido no seguinte formato:
 {
@@ -207,7 +354,8 @@ Responda APENAS com JSON válido no seguinte formato:
     "alinhamento": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" },
     "qualidadeImagem": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" },
     "elementosSeguranca": { "status": "OK" | "SUSPEITO" | "NAO_VISIVEL", "descricao": "explicação" },
-    "consistenciaDados": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" }
+    "consistenciaDados": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" }${pdfMetadata ? `,
+    "metadados": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação sobre os metadados do PDF" }` : ""}
   },
   "recomendacao": "APROVAR" | "SOLICITAR_NOVO_DOCUMENTO" | "INVESTIGAR",
   "observacoes": "observações gerais sobre o documento"
@@ -217,7 +365,8 @@ IMPORTANTE:
 - Seja criterioso mas justo. Nem toda imperfeição é sinal de fraude.
 - Considere que fotos de documentos podem ter reflexos, sombras ou distorções naturais.
 - Documentos mais antigos podem ter desgaste natural.
-- Se não conseguir analisar algum aspecto por limitação da imagem, indique isso.`;
+- Se não conseguir analisar algum aspecto por limitação da imagem, indique isso.
+${metadataWarnings.length > 0 ? "- ATENÇÃO: Foram detectados alertas nos metadados do PDF. Considere isso fortemente na sua análise." : ""}`;
 
     const contents = [
       {
@@ -243,6 +392,12 @@ IMPORTANTE:
     }
 
     const data: AuthenticityAnalysis = JSON.parse(jsonMatch[0]);
+    
+    // Adiciona os metadados do PDF ao resultado
+    if (pdfMetadata && Object.keys(pdfMetadata).length > 0) {
+      data.metadatasPdf = pdfMetadata;
+    }
+    
     return data;
   } catch (error) {
     console.error("Failed to analyze document authenticity:", error);
