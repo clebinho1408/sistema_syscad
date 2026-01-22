@@ -246,22 +246,20 @@ export async function analyzeDocumentAuthenticity(
     if (pdfMetadata) {
       const criador = (pdfMetadata.criador || "").toLowerCase();
       
-      // REGRA 1: Software deve ser Adobe LiveCycle Designer - qualquer outro = FALSO
+      // REGRA 1: Verifica se o software está na lista de programas de edição suspeitos
+      // Se está na lista = SUSPEITO, se não está = CONFIÁVEL
       if (pdfMetadata.criador) {
-        if (!criador.includes("adobe livecycle") && !criador.includes("livecycle designer")) {
-          // Verifica se é software suspeito de edição
-          for (const software of suspiciousSoftware) {
-            if (criador.includes(software)) {
-              metadataWarnings.push(`Software de edição detectado: ${pdfMetadata.criador}`);
-              isFalseDocument = true;
-              break;
-            }
-          }
-          // Se não é LiveCycle e não é software de edição conhecido, ainda é suspeito
-          if (!isFalseDocument && metadataWarnings.length === 0) {
-            metadataWarnings.push(`Software não é Adobe LiveCycle Designer: ${pdfMetadata.criador}`);
+        let softwareSuspeito = false;
+        for (const software of suspiciousSoftware) {
+          if (criador.includes(software)) {
+            metadataWarnings.push(`Software de edição detectado: ${pdfMetadata.criador}`);
+            isFalseDocument = true;
+            softwareSuspeito = true;
+            break;
           }
         }
+        // Se não está na lista de suspeitos, o software é considerado confiável
+        // Não adiciona warning neste caso
       }
       
       // REGRA 2: Campos vazios = OK, campos preenchidos = SUSPEITO
