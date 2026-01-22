@@ -323,30 +323,34 @@ export async function analyzeDocumentAuthenticity(
 
     const systemPrompt = `Você é um especialista forense em análise de documentos brasileiros, especializado em detectar adulterações e falsificações.
 
+IMPORTANTE SOBRE DOCUMENTOS ESCANEADOS:
+- Documentos escaneados NATURALMENTE perdem nitidez e qualidade - isso é NORMAL e esperado
+- O que é SUSPEITO é quando há TEXTO MUITO NÍTIDO/LEGÍVEL em um documento que está desfocado/borrado no geral
+- Texto editado/adicionado digitalmente mantém nitidez perfeita mesmo em scan de baixa qualidade
+- Se o documento todo está um pouco borrado MAS alguns textos estão perfeitamente legíveis = MUITO SUSPEITO (sinal de edição)
+
 Analise esta imagem de documento e verifique sinais de adulteração ou falsificação. Examine cuidadosamente:
 
 1. **FONTES E TIPOGRAFIA:**
    - Consistência das fontes usadas no documento
    - Tamanho e espaçamento uniformes
    - Fontes que não correspondem ao padrão oficial do documento
+   - ATENÇÃO: Texto perfeitamente nítido em documento borrado = MUITO SUSPEITO
 
 2. **ALINHAMENTO E LAYOUT:**
    - Textos desalinhados ou inclinados
    - Espaçamento irregular entre elementos
    - Posicionamento incorreto de campos
 
-3. **QUALIDADE DA IMAGEM:**
-   - Áreas com qualidade/resolução diferente
-   - Borrões localizados ou artefatos de edição
+3. **QUALIDADE DA IMAGEM (ANÁLISE DE EDIÇÃO):**
+   - CRÍTICO: Diferenças de nitidez entre áreas - texto muito legível em scan borrado = EDIÇÃO
+   - Áreas com qualidade/resolução visivelmente diferente do resto
+   - Borrões localizados ou artefatos de edição digital
    - Diferenças de iluminação em partes específicas
    - Sinais de recorte e colagem (copy-paste)
+   - LEMBRE-SE: Scan borrado uniforme é NORMAL; texto perfeito em scan borrado é SUSPEITO
 
-4. **ELEMENTOS DE SEGURANÇA:**
-   - Marcas d'água ausentes ou irregulares
-   - Hologramas ou elementos especiais (se visíveis)
-   - Padrões de fundo inconsistentes
-
-5. **CONSISTÊNCIA DOS DADOS:**
+4. **CONSISTÊNCIA DOS DADOS:**
    - Formatos de data incorretos
    - Números de documento com formato inválido
    - Informações contraditórias
@@ -361,7 +365,6 @@ Responda APENAS com JSON válido no seguinte formato:
     "fontes": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" },
     "alinhamento": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" },
     "qualidadeImagem": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" },
-    "elementosSeguranca": { "status": "OK" | "SUSPEITO" | "NAO_VISIVEL", "descricao": "explicação" },
     "consistenciaDados": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" }${pdfMetadata ? `,
     "metadados": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação sobre os metadados do PDF" }` : ""}
   },
