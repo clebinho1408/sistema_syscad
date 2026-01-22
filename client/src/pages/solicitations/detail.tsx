@@ -113,7 +113,6 @@ export default function SolicitationDetailPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const previousMessagesCount = useRef<number>(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -221,17 +220,31 @@ export default function SolicitationDetailPage() {
     };
     scrollToBottom();
     requestAnimationFrame(scrollToBottom);
-  }, [messages, isChatPopupOpen]);
+  }, [messages, isChatPopupOpen, typingUsers]);
 
   useEffect(() => {
     if (messages && messages.length > previousMessagesCount.current) {
       const lastMessage = messages[messages.length - 1];
       if (previousMessagesCount.current > 0 && lastMessage.senderId !== user?.id && !isChatPopupOpen) {
+        const playNotification = () => {
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+          oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+          
+          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+          
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + 0.3);
+        };
         try {
-          if (!audioRef.current) {
-            audioRef.current = new Audio("data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAAB4eHh4eHh4eHh4eHh4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4/QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl9gYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eHh4eHh4eHh4eHh4eHh4");
-          }
-          audioRef.current.play().catch(() => {});
+          playNotification();
         } catch {}
       }
     }
