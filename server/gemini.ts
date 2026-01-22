@@ -241,32 +241,50 @@ export async function analyzeDocumentAuthenticity(
     
     let metadataWarnings: string[] = [];
     let metadataAnalysis = { status: "NAO_DISPONIVEL", descricao: "Metadados não disponíveis para análise" };
+    let isFalseDocument = false;
     
     if (pdfMetadata) {
-      // Analisa o software criador
       const criador = (pdfMetadata.criador || "").toLowerCase();
-      const produtor = (pdfMetadata.produtor || "").toLowerCase();
-      const autor = (pdfMetadata.autor || "").toLowerCase();
       
-      for (const software of suspiciousSoftware) {
-        if (criador.includes(software) || produtor.includes(software)) {
-          metadataWarnings.push(`PDF criado com software suspeito: ${pdfMetadata.criador || pdfMetadata.produtor}`);
-          break;
+      // REGRA 1: Software deve ser Adobe LiveCycle Designer - qualquer outro = FALSO
+      if (pdfMetadata.criador) {
+        if (!criador.includes("adobe livecycle") && !criador.includes("livecycle designer")) {
+          // Verifica se é software suspeito de edição
+          for (const software of suspiciousSoftware) {
+            if (criador.includes(software)) {
+              metadataWarnings.push(`Software de edição detectado: ${pdfMetadata.criador}`);
+              isFalseDocument = true;
+              break;
+            }
+          }
+          // Se não é LiveCycle e não é software de edição conhecido, ainda é suspeito
+          if (!isFalseDocument && metadataWarnings.length === 0) {
+            metadataWarnings.push(`Software não é Adobe LiveCycle Designer: ${pdfMetadata.criador}`);
+          }
         }
       }
       
-      // Verifica palavras-chave suspeitas
+      // REGRA 2: Campos vazios = OK, campos preenchidos = SUSPEITO
+      // Documentos oficiais geralmente têm esses campos vazios
+      if (pdfMetadata.titulo) {
+        metadataWarnings.push(`Título preenchido: "${pdfMetadata.titulo}"`);
+      }
+      if (pdfMetadata.autor) {
+        metadataWarnings.push(`Autor preenchido: "${pdfMetadata.autor}"`);
+      }
+      if (pdfMetadata.assunto) {
+        metadataWarnings.push(`Assunto preenchido: "${pdfMetadata.assunto}"`);
+      }
       if (pdfMetadata.palavrasChave) {
-        const keywords = pdfMetadata.palavrasChave.toLowerCase();
-        if (keywords.includes("teste") || keywords.includes("falso") || keywords.includes("fake")) {
-          metadataWarnings.push(`Palavras-chave suspeitas no PDF: ${pdfMetadata.palavrasChave}`);
-        }
+        metadataWarnings.push(`Palavras-chave preenchidas: "${pdfMetadata.palavrasChave}"`);
       }
       
       // Define status dos metadados
-      if (metadataWarnings.length === 0) {
-        metadataAnalysis = { status: "OK", descricao: "Metadados do PDF não apresentam sinais de adulteração" };
-      } else if (metadataWarnings.length === 1) {
+      if (isFalseDocument) {
+        metadataAnalysis = { status: "IRREGULAR", descricao: metadataWarnings.join("; ") };
+      } else if (metadataWarnings.length === 0) {
+        metadataAnalysis = { status: "OK", descricao: "Metadados limpos - padrão de documento oficial" };
+      } else if (metadataWarnings.length <= 2) {
         metadataAnalysis = { status: "SUSPEITO", descricao: metadataWarnings.join("; ") };
       } else {
         metadataAnalysis = { status: "IRREGULAR", descricao: metadataWarnings.join("; ") };
@@ -277,60 +295,39 @@ export async function analyzeDocumentAuthenticity(
     if (pdfMetadata && Object.keys(pdfMetadata).length > 0) {
       metadataSection = `
 
-6. **METADADOS DO PDF (INFORMAÇÃO CRÍTICA):**
-   Os seguintes metadados foram extraídos do arquivo PDF. ANALISE-OS CUIDADOSAMENTE:
-   ${pdfMetadata.titulo ? `- Título: "${pdfMetadata.titulo}"` : ""}
-   ${pdfMetadata.autor ? `- Autor: "${pdfMetadata.autor}"` : ""}
-   ${pdfMetadata.criador ? `- Software criador: "${pdfMetadata.criador}"` : ""}
-   ${pdfMetadata.produtor ? `- Produtor: "${pdfMetadata.produtor}"` : ""}
-   ${pdfMetadata.palavrasChave ? `- Palavras-chave: "${pdfMetadata.palavrasChave}"` : ""}
-   ${pdfMetadata.dataCriacao ? `- Data de criação: ${new Date(pdfMetadata.dataCriacao).toLocaleString('pt-BR')}` : ""}
-   ${pdfMetadata.dataModificacao ? `- Última modificação: ${new Date(pdfMetadata.dataModificacao).toLocaleString('pt-BR')}` : ""}
-   ${pdfMetadata.numeroPaginas ? `- Número de páginas: ${pdfMetadata.numeroPaginas}` : ""}
-   
-   SINAIS DE ALERTA NOS METADADOS:
-   - Software como Canva, Photoshop, GIMP, Paint = MUITO SUSPEITO (documentos oficiais usam Adobe LiveCycle, sistemas governamentais)
-   - Autor com nome de gráfica/impressora = SUSPEITO
-   - Palavras-chave estranhas ou aleatórias = SUSPEITO
-   - Data de criação muito recente para documento que deveria ser antigo = SUSPEITO
-   - Modificação após criação = SUSPEITO (documentos oficiais geralmente não são editados)
-   
-   ${metadataWarnings.length > 0 ? `⚠️ ALERTAS DETECTADOS: ${metadataWarnings.join("; ")}` : ""}`;
+5. **METADADOS DO PDF (ANÁLISE JÁ REALIZADA PELO SISTEMA):**
+   Os metadados já foram analisados automaticamente. Foque na análise visual do documento.
+   ${metadataWarnings.length > 0 ? `⚠️ ALERTAS: ${metadataWarnings.join("; ")}` : "✓ Metadados OK"}`;
     }
 
-    const systemPrompt = `Você é um especialista forense em análise de documentos brasileiros, especializado em detectar adulterações e falsificações.
+    const systemPrompt = `Você é um especialista forense em análise de documentos brasileiros.
 
-IMPORTANTE SOBRE DOCUMENTOS ESCANEADOS:
-- Documentos escaneados NATURALMENTE perdem nitidez e qualidade - isso é NORMAL e esperado
-- O que é SUSPEITO é quando há TEXTO MUITO NÍTIDO/LEGÍVEL em um documento que está desfocado/borrado no geral
-- Texto editado/adicionado digitalmente mantém nitidez perfeita mesmo em scan de baixa qualidade
-- Se o documento todo está um pouco borrado MAS alguns textos estão perfeitamente legíveis = MUITO SUSPEITO (sinal de edição)
+REGRAS IMPORTANTES:
+- Documentos escaneados NATURALMENTE perdem nitidez - isso é NORMAL
+- Desalinhamento leve em scans é NORMAL (scanners não são perfeitos)
+- FOQUE principalmente na CONSISTÊNCIA DOS DADOS - esta é a análise mais importante
 
-Analise esta imagem de documento e verifique sinais de adulteração ou falsificação. Examine cuidadosamente:
+Analise esta imagem de documento:
 
-1. **FONTES E TIPOGRAFIA:**
-   - Consistência das fontes usadas no documento
-   - Tamanho e espaçamento uniformes
-   - Fontes que não correspondem ao padrão oficial do documento
-   - ATENÇÃO: Texto perfeitamente nítido em documento borrado = MUITO SUSPEITO
+1. **FONTES E TIPOGRAFIA:** (peso baixo)
+   - Consistência das fontes
+   - SUSPEITO apenas se: texto muito nítido em documento borrado (sinal de edição digital)
 
-2. **ALINHAMENTO E LAYOUT:**
-   - Textos desalinhados ou inclinados
-   - Espaçamento irregular entre elementos
-   - Posicionamento incorreto de campos
+2. **ALINHAMENTO:** (peso muito baixo - apenas 1% de impacto)
+   - Desalinhamento leve é NORMAL em scans
+   - Marque OK a menos que haja desalinhamento EXTREMO e óbvio
 
-3. **QUALIDADE DA IMAGEM (ANÁLISE DE EDIÇÃO):**
-   - CRÍTICO: Diferenças de nitidez entre áreas - texto muito legível em scan borrado = EDIÇÃO
-   - Áreas com qualidade/resolução visivelmente diferente do resto
-   - Borrões localizados ou artefatos de edição digital
-   - Diferenças de iluminação em partes específicas
-   - Sinais de recorte e colagem (copy-paste)
-   - LEMBRE-SE: Scan borrado uniforme é NORMAL; texto perfeito em scan borrado é SUSPEITO
+3. **QUALIDADE DA IMAGEM:** (peso baixo)
+   - Scan borrado uniforme = OK/NORMAL
+   - SUSPEITO apenas se: diferenças de nitidez entre áreas (texto nítido em fundo borrado)
 
-4. **CONSISTÊNCIA DOS DADOS:**
-   - Formatos de data incorretos
-   - Números de documento com formato inválido
-   - Informações contraditórias
+4. **CONSISTÊNCIA DOS DADOS:** (PESO ALTO - ANÁLISE PRINCIPAL)
+   - Verifique CADA informação visível no documento
+   - Datas: formato correto? datas fazem sentido cronologicamente?
+   - Números: CPF/RG/CNPJ com formato válido?
+   - Valores: números batem com totais?
+   - Nomes: consistentes ao longo do documento?
+   - SE ENCONTRAR INCONSISTÊNCIA: descreva EXATAMENTE qual é (ex: "CPF com 10 dígitos", "data futura", "total não bate com soma")
 ${metadataSection}
 
 Responda APENAS com JSON válido no seguinte formato:
