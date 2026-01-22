@@ -414,10 +414,10 @@ export default function NewSolicitationPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
+    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
       toast({
         title: "Tipo de arquivo inválido",
-        description: "Selecione uma imagem (JPG, PNG, etc.)",
+        description: "Selecione uma imagem (JPG, PNG) ou PDF",
         variant: "destructive",
       });
       return;
