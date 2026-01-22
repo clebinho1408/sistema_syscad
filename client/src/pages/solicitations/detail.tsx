@@ -107,6 +107,7 @@ export default function SolicitationDetailPage() {
   const [openedDocs, setOpenedDocs] = useState<Set<string>>(new Set());
   const [isAuthenticityModalOpen, setIsAuthenticityModalOpen] = useState(false);
   const [authenticityResult, setAuthenticityResult] = useState<any>(null);
+  const [verificationCooldown, setVerificationCooldown] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const previousMessagesCount = useRef<number>(0);
@@ -230,6 +231,9 @@ export default function SolicitationDetailPage() {
     onSuccess: (data) => {
       setAuthenticityResult(data);
       setIsAuthenticityModalOpen(true);
+      // Ativa cooldown de 15 segundos após verificação
+      setVerificationCooldown(true);
+      setTimeout(() => setVerificationCooldown(false), 15000);
     },
     onError: (error: any) => {
       toast({
@@ -237,6 +241,9 @@ export default function SolicitationDetailPage() {
         description: error.message || "Não foi possível verificar a autenticidade do documento",
         variant: "destructive",
       });
+      // Ativa cooldown mesmo em caso de erro (para evitar spam)
+      setVerificationCooldown(true);
+      setTimeout(() => setVerificationCooldown(false), 15000);
     },
   });
 
@@ -1001,7 +1008,7 @@ export default function SolicitationDetailPage() {
                     variant="secondary" 
                     size="sm"
                     onClick={() => verifyAuthenticityMutation.mutate(selectedDoc!.id)}
-                    disabled={verifyAuthenticityMutation.isPending}
+                    disabled={verifyAuthenticityMutation.isPending || verificationCooldown}
                     data-testid="button-verify-authenticity"
                   >
                     {verifyAuthenticityMutation.isPending ? (
