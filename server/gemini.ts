@@ -333,12 +333,33 @@ Analise esta imagem de documento:
    - SUSPEITO: área retangular clara/branca com texto diferente por cima
 
 4. **CONSISTÊNCIA DOS DADOS:** (PESO ALTO - ANÁLISE PRINCIPAL)
-   - Verifique CADA informação visível no documento
-   - Datas: formato correto? datas fazem sentido cronologicamente?
-   - Números: CPF/RG/CNPJ com formato válido?
-   - Valores: números batem com totais?
-   - Nomes: consistentes ao longo do documento?
-   - SE ENCONTRAR INCONSISTÊNCIA: descreva EXATAMENTE qual é (ex: "CPF com 10 dígitos", "data futura", "total não bate com soma")
+   
+   FOQUE APENAS NESTES CAMPOS (IGNORE cálculos, impostos, valores monetários):
+   
+   a) **NOME COMPLETO:**
+      - O nome aparece mais de uma vez no documento?
+      - TODOS os nomes são EXATAMENTE iguais?
+      - SUSPEITO: nome diferente em partes diferentes do documento
+   
+   b) **ENDEREÇO COMPLETO:**
+      - O endereço normalmente aparece 2 vezes (ex: dados do cliente e endereço de entrega)
+      - Compare TODAS as ocorrências do endereço
+      - Verifique: RUA, NÚMERO, BAIRRO, CIDADE, CEP
+      - SUSPEITO: bairro diferente em uma parte vs outra, rua com nome diferente, CEP não confere
+   
+   c) **DATA DE EMISSÃO / DATA DO DOCUMENTO:**
+      - A data de emissão está no FUTURO? (Ex: março 2026 quando estamos em janeiro 2026)
+      - Data de emissão POSTERIOR à data de vencimento é MUITO SUSPEITO
+      - SUSPEITO: qualquer data futura
+   
+   d) **MÊS DE REFERÊNCIA:**
+      - O mês de referência faz sentido com a data de emissão?
+      - SUSPEITO: referência de mês futuro
+   
+   e) **CPF/RG/CNPJ:**
+      - Formato válido? (CPF = 11 dígitos, RG varia por estado)
+   
+   IGNORE COMPLETAMENTE: cálculos de impostos, PIS/COFINS, valores de consumo, totais
 ${metadataSection}
 
 Responda APENAS com JSON válido no seguinte formato:
