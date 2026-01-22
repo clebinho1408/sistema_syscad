@@ -27,6 +27,7 @@ export default function DashboardPage() {
 
   const { data: allSolicitations, isLoading: solicitationsLoading } = useQuery<SolicitationWithDetails[]>({
     queryKey: ["/api/solicitations"],
+    refetchInterval: 10000,
   });
 
   const { data: solicitationTypes } = useQuery<SolicitationType[]>({

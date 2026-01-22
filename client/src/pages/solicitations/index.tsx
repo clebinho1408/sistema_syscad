@@ -22,6 +22,7 @@ export default function SolicitationsPage() {
 
   const { data: solicitations, isLoading } = useQuery<SolicitationWithDetails[]>({
     queryKey: ["/api/solicitations"],
+    refetchInterval: 10000,
   });
 
   const { data: unreadCounts } = useQuery<{ solicitationId: string; unreadCount: number }[]>({

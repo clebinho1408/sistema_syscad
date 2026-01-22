@@ -132,6 +132,7 @@ export default function SolicitationDetailPage() {
   const { data: solicitation, isLoading } = useQuery<SolicitationWithDetails>({
     queryKey: ["/api/solicitations", params?.id],
     enabled: !!params?.id,
+    refetchInterval: 5000,
   });
 
   const { data: solicitationTypes } = useQuery<SolicitationType[]>({
@@ -151,11 +152,13 @@ export default function SolicitationDetailPage() {
   const { data: documents } = useQuery<Document[]>({
     queryKey: ["/api/solicitations", params?.id, "documents"],
     enabled: !!params?.id,
+    refetchInterval: 5000,
   });
 
   const { data: accessRequests } = useQuery<{ id: string; fields: string[] | null; documents: string[] | null; status: string; requestedByName: string; rejectionReason: string | null; createdAt: string }[]>({
     queryKey: ["/api/solicitations", params?.id, "access-requests"],
     enabled: !!params?.id,
+    refetchInterval: 5000,
   });
 
   useEffect(() => {
