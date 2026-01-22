@@ -953,7 +953,7 @@ export default function SolicitationDetailPage() {
                       >
                         <Send className="w-4 h-4" />
                       </Button>
-                      <a href={doc.fileData} download={doc.fileName} target="_blank" rel="noopener noreferrer">
+                      <a href={doc.fileData ?? undefined} download={doc.fileName} target="_blank" rel="noopener noreferrer">
                         <Button variant="ghost" size="icon" data-testid={`button-download-${doc.id}`}>
                           <Download className="w-4 h-4" />
                         </Button>
@@ -979,13 +979,13 @@ export default function SolicitationDetailPage() {
               <div className="flex-1 overflow-auto bg-muted/30 flex items-center justify-center p-4">
                 {selectedDoc?.fileType.startsWith('image/') ? (
                   <img 
-                    src={selectedDoc.fileData} 
+                    src={selectedDoc.fileData ?? undefined} 
                     alt={selectedDoc.fileName}
                     className="max-w-full h-auto shadow-lg"
                   />
                 ) : selectedDoc?.fileType === 'application/pdf' ? (
                   <iframe 
-                    src={selectedDoc.fileData} 
+                    src={selectedDoc.fileData ?? undefined} 
                     className="w-full h-full border-0"
                   />
                 ) : (
@@ -1156,59 +1156,72 @@ export default function SolicitationDetailPage() {
                         <FileText className="w-4 h-4" />
                         Metadados do PDF
                       </h4>
-                      <div className="grid gap-1 text-sm bg-muted/30 p-3 rounded-lg">
-                        {authenticityResult.metadatasPdf.titulo && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Título:</span>
-                            <span className="font-mono text-xs max-w-[60%] truncate">{authenticityResult.metadatasPdf.titulo}</span>
-                          </div>
-                        )}
-                        {authenticityResult.metadatasPdf.autor && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Autor:</span>
-                            <span className={`font-mono text-xs ${authenticityResult.metadatasPdf.autor.toLowerCase().includes('canva') || authenticityResult.metadatasPdf.autor.toLowerCase().includes('grafica') ? 'text-red-500 font-bold' : ''}`}>
-                              {authenticityResult.metadatasPdf.autor}
-                            </span>
-                          </div>
-                        )}
-                        {authenticityResult.metadatasPdf.criador && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Software Criador:</span>
-                            <span className={`font-mono text-xs ${authenticityResult.metadatasPdf.criador.toLowerCase().includes('canva') ? 'text-red-500 font-bold' : ''}`}>
-                              {authenticityResult.metadatasPdf.criador}
-                            </span>
-                          </div>
-                        )}
-                        {authenticityResult.metadatasPdf.produtor && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Produtor:</span>
-                            <span className="font-mono text-xs">{authenticityResult.metadatasPdf.produtor}</span>
-                          </div>
-                        )}
-                        {authenticityResult.metadatasPdf.palavrasChave && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Palavras-chave:</span>
-                            <span className="font-mono text-xs max-w-[60%] truncate">{authenticityResult.metadatasPdf.palavrasChave}</span>
-                          </div>
-                        )}
-                        {authenticityResult.metadatasPdf.dataCriacao && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Criado em:</span>
-                            <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataCriacao).toLocaleString('pt-BR')}</span>
-                          </div>
-                        )}
-                        {authenticityResult.metadatasPdf.dataModificacao && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Modificado em:</span>
-                            <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataModificacao).toLocaleString('pt-BR')}</span>
-                          </div>
-                        )}
-                        {authenticityResult.metadatasPdf.numeroPaginas && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Páginas:</span>
-                            <span className="font-mono text-xs">{authenticityResult.metadatasPdf.numeroPaginas}</span>
-                          </div>
-                        )}
+                      <div className="bg-muted/30 p-3 rounded-lg border">
+                        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+                          {authenticityResult.metadatasPdf.titulo && (
+                            <>
+                              <span className="text-muted-foreground whitespace-nowrap">Título:</span>
+                              <span className="font-mono text-xs break-all">{authenticityResult.metadatasPdf.titulo}</span>
+                            </>
+                          )}
+                          {authenticityResult.metadatasPdf.autor && (
+                            <>
+                              <span className="text-muted-foreground whitespace-nowrap">Autor:</span>
+                              <span className={`font-mono text-xs break-all ${
+                                /canva|grafica|gráfica|impressões|impressoes|copiadora|papelaria/i.test(authenticityResult.metadatasPdf.autor) 
+                                  ? 'text-red-500 font-bold' : ''
+                              }`}>
+                                {authenticityResult.metadatasPdf.autor}
+                              </span>
+                            </>
+                          )}
+                          {authenticityResult.metadatasPdf.criador && (
+                            <>
+                              <span className="text-muted-foreground whitespace-nowrap">Software Criador:</span>
+                              <span className={`font-mono text-xs break-all ${
+                                /canva|photoshop|gimp|paint|word|libreoffice|pixlr|fotor|abbyy|ocr|camscanner|smallpdf|ilovepdf|sejda|pdf24|nitro|pdfelement/i.test(authenticityResult.metadatasPdf.criador) 
+                                  ? 'text-red-500 font-bold' : ''
+                              }`}>
+                                {authenticityResult.metadatasPdf.criador}
+                              </span>
+                            </>
+                          )}
+                          {authenticityResult.metadatasPdf.produtor && (
+                            <>
+                              <span className="text-muted-foreground whitespace-nowrap">Produtor:</span>
+                              <span className={`font-mono text-xs break-all ${
+                                /canva|photoshop|gimp|paint|word|libreoffice|pixlr|fotor|abbyy|ocr|camscanner|smallpdf|ilovepdf|sejda|pdf24|nitro|pdfelement/i.test(authenticityResult.metadatasPdf.produtor) 
+                                  ? 'text-red-500 font-bold' : ''
+                              }`}>
+                                {authenticityResult.metadatasPdf.produtor}
+                              </span>
+                            </>
+                          )}
+                          {authenticityResult.metadatasPdf.palavrasChave && (
+                            <>
+                              <span className="text-muted-foreground whitespace-nowrap">Palavras-chave:</span>
+                              <span className="font-mono text-xs break-all">{authenticityResult.metadatasPdf.palavrasChave}</span>
+                            </>
+                          )}
+                          {authenticityResult.metadatasPdf.dataCriacao && (
+                            <>
+                              <span className="text-muted-foreground whitespace-nowrap">Criado em:</span>
+                              <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataCriacao).toLocaleString('pt-BR')}</span>
+                            </>
+                          )}
+                          {authenticityResult.metadatasPdf.dataModificacao && (
+                            <>
+                              <span className="text-muted-foreground whitespace-nowrap">Modificado em:</span>
+                              <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataModificacao).toLocaleString('pt-BR')}</span>
+                            </>
+                          )}
+                          {authenticityResult.metadatasPdf.numeroPaginas && (
+                            <>
+                              <span className="text-muted-foreground whitespace-nowrap">Páginas:</span>
+                              <span className="font-mono text-xs">{authenticityResult.metadatasPdf.numeroPaginas}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}

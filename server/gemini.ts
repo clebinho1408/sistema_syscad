@@ -221,10 +221,24 @@ export async function analyzeDocumentAuthenticity(
 ): Promise<AuthenticityAnalysis> {
   try {
     // Lista de softwares suspeitos para criação de documentos oficiais
+    // Inclui editores de imagem, OCR, editores online e processadores de texto
     const suspiciousSoftware = [
-      "canva", "photoshop", "gimp", "paint", "word", "libreoffice", 
-      "google docs", "pixlr", "fotor", "befunky", "picmonkey",
-      "casa das impressões", "gráfica", "grafica"
+      // Editores gráficos
+      "canva", "photoshop", "adobe photoshop", "gimp", "paint", "corel", "coreldraw", "inkscape", "affinity",
+      // Processadores de texto
+      "word", "microsoft word", "libreoffice", "openoffice", "google docs", "wps office",
+      // Editores online
+      "pixlr", "fotor", "befunky", "picmonkey", "canva.com", "remove.bg", "photopea", "lunapic",
+      "iloveimg", "smallpdf", "ilovepdf", "sejda", "pdf24", "pdfcandy", "cleverpdf",
+      // Softwares OCR
+      "abbyy", "finereader", "ocr", "tesseract", "readiris", "omnipage", "scansoft",
+      "adobe scan", "microsoft lens", "camscanner", "scanbot", "genius scan",
+      // Conversores PDF
+      "nitro", "pdf-xchange", "pdfforge", "pdfelement", "foxit phantompdf",
+      // Gráficas e impressões
+      "casa das impressões", "gráfica", "grafica", "copiadora", "papelaria",
+      // Editores de PDF
+      "pdfescape", "pdf-editor", "pdf editor", "pdf pro", "pdfpen", "formswift"
     ];
     
     let metadataWarnings: string[] = [];
