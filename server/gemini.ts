@@ -354,14 +354,16 @@ PESOS DE IMPORTÂNCIA NA ANÁLISE:
       - Verifique: RUA, NÚMERO, BAIRRO, CIDADE, CEP
       - SUSPEITO: bairro diferente em uma parte vs outra, rua com nome diferente, CEP não confere
    
-   c) **DATA DE EMISSÃO / DATA DO DOCUMENTO:**
+   c) **DATA DE EMISSÃO / DATA DO DOCUMENTO:** (muito editado em fraudes)
+      - Data de emissão = quando o documento foi GERADO pelo sistema
       - A data de emissão está no FUTURO? (Ex: março 2026 quando estamos em janeiro 2026)
-      - Data de emissão POSTERIOR à data de vencimento é MUITO SUSPEITO
-      - SUSPEITO: qualquer data futura
+      - SUSPEITO: qualquer data de emissão futura
+      - IGNORE data de vencimento - não é relevante para fraude
    
-   d) **MÊS DE REFERÊNCIA:**
-      - O mês de referência faz sentido com a data de emissão?
-      - SUSPEITO: referência de mês futuro
+   d) **MÊS DE REFERÊNCIA:** (muito editado em fraudes)
+      - O mês de referência é MUITO editado em documentos falsos
+      - Referência de mês futuro é MUITO SUSPEITO
+      - Referência que não faz sentido com a data de emissão é SUSPEITO
    
    e) **CPF/RG/CNPJ:**
       - Formato válido? (CPF = 11 dígitos, RG varia por estado)
