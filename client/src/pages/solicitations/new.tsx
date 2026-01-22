@@ -605,14 +605,14 @@ export default function NewSolicitationPage() {
                   <CardTitle className="text-lg">Preenchimento Automático</CardTitle>
                 </div>
                 <CardDescription>
-                  Envie uma foto do documento de identificação (RG ou CNH) para preencher os campos automaticamente
+                  Envie uma foto ou PDF do documento de identificação (RG ou CNH) para preencher os campos automaticamente
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-4">
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.pdf,application/pdf"
                     id="ocr-upload"
                     className="hidden"
                     onChange={handleOcrUpload}
