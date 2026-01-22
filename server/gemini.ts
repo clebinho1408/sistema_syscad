@@ -384,8 +384,15 @@ ${metadataWarnings.length > 0 ? "- ATENÇÃO: Foram detectados alertas nos metad
     }
     
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to analyze document authenticity:", error);
-    throw new Error(`Falha ao verificar autenticidade: ${error}`);
+    
+    // Verifica se é erro de rate limit
+    const errorStr = String(error);
+    if (errorStr.includes("RESOURCE_EXHAUSTED") || errorStr.includes("rate-limit") || errorStr.includes("quota")) {
+      throw new Error("Limite de uso da API atingido. Aguarde alguns segundos e tente novamente.");
+    }
+    
+    throw new Error("Falha ao verificar autenticidade. Tente novamente em alguns instantes.");
   }
 }
