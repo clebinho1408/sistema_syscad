@@ -75,17 +75,36 @@ Todos os textos devem estar em MAIÚSCULAS, sem acentos.`;
 
     const data: DocumentData = JSON.parse(jsonMatch[0]);
     
-    // Pós-processamento: se tiver RG de 11 dígitos e não tiver CPF, usa o RG como CPF
+    // Pós-processamento do RG: remover letras e dígito verificador
+    if (data.rg) {
+      let rg = data.rg;
+      
+      // Remove o dígito verificador se houver (após traço ou letra no final)
+      // Exemplos: "12345678-9" -> "12345678", "12345678-X" -> "12345678", "12345678X" -> "12345678"
+      rg = rg.replace(/[-.]?\s*[A-Za-z]$/i, ""); // Remove letra no final
+      rg = rg.replace(/-\d$/, ""); // Remove dígito verificador após traço
+      
+      // Remove todas as letras e caracteres especiais, mantendo apenas números
+      rg = rg.replace(/\D/g, "");
+      
+      data.rg = rg;
+    }
+    
+    // Pós-processamento do CPF: apenas números
+    if (data.cpf) {
+      data.cpf = data.cpf.replace(/\D/g, "");
+    }
+    
+    // Se tiver RG de 11 dígitos e não tiver CPF, usa o RG como CPF (documento "RG e CPF")
     if (data.rg && !data.cpf) {
-      const rgDigits = data.rg.replace(/\D/g, "");
-      if (rgDigits.length === 11) {
-        data.cpf = rgDigits;
+      if (data.rg.length === 11) {
+        data.cpf = data.rg;
       }
     }
     
     // Se tiver CPF e não tiver RG, usa o CPF como RG (para documentos "RG e CPF")
     if (data.cpf && !data.rg) {
-      data.rg = data.cpf.replace(/\D/g, "");
+      data.rg = data.cpf;
     }
     
     return data;
