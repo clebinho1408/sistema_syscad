@@ -118,3 +118,24 @@ Preferred communication style: Simple, everyday language.
 - **Extracted Fields:** nome, cpf, rg, dataNascimento, sexo, nomeMae, nomePai, nacionalidade, naturalidade, ufNascimento
 - **Frontend:** OCR upload component only appears when GEMINI_API_KEY is configured
 - **Location:** `server/gemini.ts` (Gemini integration), `client/src/pages/solicitations/new.tsx` (UI)
+
+### Document Authenticity Verification
+- **Purpose:** Detect document fraud by analyzing visual elements and PDF metadata
+- **Service:** Google Gemini AI (gemini-2.5-flash model) + pdf-lib for metadata extraction
+- **Routes:**
+  - `POST /api/documents/:id/verify-authenticity`: Analyze document for fraud indicators (operador/admin only)
+- **Visual Analysis:**
+  - Font consistency and typography
+  - Alignment and layout irregularities
+  - Image quality and editing artifacts
+  - Security elements (watermarks, holograms)
+  - Data consistency
+- **PDF Metadata Analysis:**
+  - Detects suspicious software (Canva, Photoshop, GIMP, Paint, etc.)
+  - Flags suspicious authors (gráficas, casas de impressão)
+  - Checks for modifications after creation
+  - Flags very recent creation dates
+  - Analyzes suspicious keywords
+- **Response:** Returns risk level (BAIXO/MEDIO/ALTO), confidence score, suspicious points, detailed analysis, and recommendation (APROVAR/SOLICITAR_NOVO_DOCUMENTO/INVESTIGAR)
+- **Frontend:** "Verificar Autenticidade" button in document viewer (operador/admin only), modal with detailed results including PDF metadata display
+- **Location:** `server/gemini.ts` (analyzeDocumentAuthenticity, extractPdfMetadata), `client/src/pages/solicitations/detail.tsx` (UI)
