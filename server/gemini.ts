@@ -305,21 +305,32 @@ export async function analyzeDocumentAuthenticity(
 REGRAS IMPORTANTES:
 - Documentos escaneados NATURALMENTE perdem nitidez - isso é NORMAL
 - Desalinhamento leve em scans é NORMAL (scanners não são perfeitos)
+- Se TODAS as fontes seguem um PADRÃO CONSISTENTE = OK (aprovado)
 - FOQUE principalmente na CONSISTÊNCIA DOS DADOS - esta é a análise mais importante
 
 Analise esta imagem de documento:
 
-1. **FONTES E TIPOGRAFIA:** (peso baixo)
-   - Consistência das fontes
-   - SUSPEITO apenas se: texto muito nítido em documento borrado (sinal de edição digital)
+1. **FONTES E TIPOGRAFIA:** (peso médio - detecta edições)
+   - Procure por textos que FOGEM DO PADRÃO do restante do documento:
+     * Fonte com FINURA diferente (mais fina ou mais grossa que as outras)
+     * Fonte com LARGURA diferente (mais larga ou mais estreita)
+     * Fonte com ALTURA diferente
+     * Fonte com TAMANHO diferente do esperado para aquele campo
+   - Texto que parece ter sido ADICIONADO DEPOIS (não combina com o resto)
+   - Se TODAS as fontes seguem o MESMO PADRÃO = OK
+   - SUSPEITO: texto com características diferentes do padrão do documento
 
 2. **ALINHAMENTO:** (peso muito baixo - apenas 1% de impacto)
    - Desalinhamento leve é NORMAL em scans
    - Marque OK a menos que haja desalinhamento EXTREMO e óbvio
 
-3. **QUALIDADE DA IMAGEM:** (peso baixo)
+3. **QUALIDADE DA IMAGEM - FUNDO:** (peso médio - detecta edições)
+   - Procure por MUDANÇAS DE FUNDO suspeitas:
+     * Áreas com formato de QUADRADO/RETÂNGULO BRANCO atrás de texto
+     * Diferenças sutis de cor/tom no fundo onde há texto editado
+     * Bordas visíveis de recorte/colagem
    - Scan borrado uniforme = OK/NORMAL
-   - SUSPEITO apenas se: diferenças de nitidez entre áreas (texto nítido em fundo borrado)
+   - SUSPEITO: área retangular clara/branca com texto diferente por cima
 
 4. **CONSISTÊNCIA DOS DADOS:** (PESO ALTO - ANÁLISE PRINCIPAL)
    - Verifique CADA informação visível no documento
