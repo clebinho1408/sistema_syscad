@@ -8,6 +8,7 @@ import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
 import passport from "passport";
 import { WebSocketServer, WebSocket } from "ws";
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
+import { analyzeDocument, isGeminiConfigured } from "./gemini";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -492,6 +493,38 @@ export async function registerRoutes(
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
+
+  // Route for analyzing document with OCR (Gemini AI)
+  app.post("/api/documents/analyze", requireAuth, async (req, res) => {
+    try {
+      if (!isGeminiConfigured()) {
+        return res.status(503).json({ 
+          error: "Reconhecimento de documentos não configurado",
+          message: "A chave GEMINI_API_KEY não está configurada no sistema"
+        });
+      }
+
+      const { imageBase64, mimeType } = req.body;
+
+      if (!imageBase64 || !mimeType) {
+        return res.status(400).json({ error: "Imagem e tipo MIME são obrigatórios" });
+      }
+
+      const result = await analyzeDocument(imageBase64, mimeType);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error analyzing document:", error);
+      res.status(500).json({ 
+        error: "Falha ao analisar documento", 
+        message: error.message 
+      });
+    }
+  });
+
+  // Route to check if OCR is available
+  app.get("/api/documents/ocr-status", requireAuth, async (req, res) => {
+    res.json({ available: isGeminiConfigured() });
   });
 
   // Route for requesting presigned URL for document upload

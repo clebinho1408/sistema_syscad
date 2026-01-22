@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, Upload, X, FileIcon } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, X, FileIcon, ScanLine, CheckCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -320,6 +320,121 @@ export default function NewSolicitationPage() {
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [customCidade, setCustomCidade] = useState<string>("");
   const [customCidadeNascimento, setCustomCidadeNascimento] = useState<string>("");
+  const [ocrCompleted, setOcrCompleted] = useState(false);
+
+  const { data: ocrStatus } = useQuery<{ available: boolean }>({
+    queryKey: ["/api/documents/ocr-status"],
+  });
+
+  const ocrMutation = useMutation({
+    mutationFn: async (file: File) => {
+      return new Promise<{ imageBase64: string; mimeType: string }>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(",")[1];
+          resolve({ imageBase64: base64, mimeType: file.type });
+        };
+        reader.onerror = () => reject(new Error("Erro ao ler arquivo"));
+        reader.readAsDataURL(file);
+      }).then(async ({ imageBase64, mimeType }) => {
+        const response = await fetch("/api/documents/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ imageBase64, mimeType }),
+        });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || "Erro ao analisar documento");
+        }
+        return response.json();
+      });
+    },
+    onSuccess: (data: any) => {
+      let fieldsUpdated = 0;
+      
+      if (data.nome) {
+        form.setValue("nomeCompleto", toUpperWithoutAccents(data.nome));
+        fieldsUpdated++;
+      }
+      if (data.cpf) {
+        form.setValue("cpf", formatCpf(data.cpf));
+        fieldsUpdated++;
+      }
+      if (data.rg) {
+        form.setValue("rg", data.rg);
+        fieldsUpdated++;
+      }
+      if (data.dataNascimento) {
+        form.setValue("dataNascimento", data.dataNascimento);
+        fieldsUpdated++;
+      }
+      if (data.sexo) {
+        form.setValue("sexo", data.sexo);
+        fieldsUpdated++;
+      }
+      if (data.nomeMae) {
+        form.setValue("nomeMae", toUpperWithoutAccents(data.nomeMae));
+        fieldsUpdated++;
+      }
+      if (data.nomePai) {
+        form.setValue("nomePai", toUpperWithoutAccents(data.nomePai));
+        fieldsUpdated++;
+      }
+      if (data.nacionalidade) {
+        form.setValue("nacionalidade", data.nacionalidade);
+        fieldsUpdated++;
+      }
+      if (data.naturalidade) {
+        form.setValue("cidadeNascimento", toUpperWithoutAccents(data.naturalidade));
+        setCustomCidadeNascimento(toUpperWithoutAccents(data.naturalidade));
+        fieldsUpdated++;
+      }
+      if (data.ufNascimento) {
+        form.setValue("ufNascimento", data.ufNascimento);
+        fieldsUpdated++;
+      }
+
+      setOcrCompleted(true);
+      toast({
+        title: "Documento analisado!",
+        description: `${fieldsUpdated} campo(s) preenchido(s) automaticamente. Verifique os dados.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao analisar documento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOcrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Tipo de arquivo inválido",
+        description: "Selecione uma imagem (JPG, PNG, etc.)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "Arquivo muito grande",
+        description: "A imagem deve ter no máximo 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    ocrMutation.mutate(file);
+    e.target.value = "";
+  };
 
   const fetchAddressByCep = async (cep: string) => {
     const cleanCep = cep.replace(/\D/g, "");
@@ -481,6 +596,59 @@ export default function NewSolicitationPage() {
               />
             </CardContent>
           </Card>
+
+          {ocrStatus?.available && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <ScanLine className="w-5 h-5 text-primary" />
+                  <CardTitle className="text-lg">Preenchimento Automático</CardTitle>
+                </div>
+                <CardDescription>
+                  Envie uma foto do documento de identificação (RG ou CNH) para preencher os campos automaticamente
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="ocr-upload"
+                    className="hidden"
+                    onChange={handleOcrUpload}
+                    data-testid="input-ocr-upload"
+                  />
+                  <label htmlFor="ocr-upload">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      disabled={ocrMutation.isPending}
+                      onClick={() => document.getElementById("ocr-upload")?.click()}
+                      data-testid="button-ocr-upload"
+                    >
+                      {ocrMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Analisando documento...
+                        </>
+                      ) : (
+                        <>
+                          <ScanLine className="w-4 h-4 mr-2" />
+                          Enviar Documento para Análise
+                        </>
+                      )}
+                    </Button>
+                  </label>
+                  {ocrCompleted && (
+                    <div className="flex items-center gap-2 text-sm text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      Campos preenchidos automaticamente
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
