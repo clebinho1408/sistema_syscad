@@ -115,6 +115,8 @@ export default function SolicitationDetailPage() {
   const previousMessagesCount = useRef<number>(0);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioUnlockedRef = useRef<boolean>(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -122,6 +124,33 @@ export default function SolicitationDetailPage() {
       setIsChatPopupOpen(true);
       window.history.replaceState({}, "", window.location.pathname);
     }
+  }, []);
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      if (audioUnlockedRef.current) return;
+      
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!audioContextRef.current) {
+          audioContextRef.current = new AudioContextClass();
+        }
+        if (audioContextRef.current.state === "suspended") {
+          audioContextRef.current.resume();
+        }
+        audioUnlockedRef.current = true;
+      } catch {}
+    };
+
+    document.addEventListener("click", unlockAudio);
+    document.addEventListener("keydown", unlockAudio);
+    document.addEventListener("touchstart", unlockAudio);
+
+    return () => {
+      document.removeEventListener("click", unlockAudio);
+      document.removeEventListener("keydown", unlockAudio);
+      document.removeEventListener("touchstart", unlockAudio);
+    };
   }, []);
 
   useEffect(() => {
@@ -227,21 +256,27 @@ export default function SolicitationDetailPage() {
       const lastMessage = messages[messages.length - 1];
       if (previousMessagesCount.current > 0 && lastMessage.senderId !== user?.id && !isChatPopupOpen) {
         const playNotification = () => {
-          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-          const oscillator = audioContext.createOscillator();
-          const gainNode = audioContext.createGain();
+          if (!audioUnlockedRef.current || !audioContextRef.current) return;
+          
+          const ctx = audioContextRef.current;
+          if (ctx.state === "suspended") {
+            ctx.resume();
+          }
+          
+          const oscillator = ctx.createOscillator();
+          const gainNode = ctx.createGain();
           
           oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
+          gainNode.connect(ctx.destination);
           
-          oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-          oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+          oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+          oscillator.frequency.setValueAtTime(660, ctx.currentTime + 0.15);
           
-          gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+          gainNode.gain.setValueAtTime(0.4, ctx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
           
-          oscillator.start(audioContext.currentTime);
-          oscillator.stop(audioContext.currentTime + 0.3);
+          oscillator.start(ctx.currentTime);
+          oscillator.stop(ctx.currentTime + 0.4);
         };
         try {
           playNotification();
