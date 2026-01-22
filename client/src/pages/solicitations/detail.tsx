@@ -475,23 +475,16 @@ export default function SolicitationDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Button 
-                    onClick={handleCadastrado} 
-                    className="w-full bg-green-600 hover:bg-green-700"
-                    disabled={updateStatusMutation.isPending || !allDocsOpened}
-                    data-testid="button-approve"
-                  >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Cadastro Finalizado
-                  </Button>
-                  {!allDocsOpened && documents && documents.length > 0 && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      Abra todos os anexos ({openedDocs.size}/{documents.length})
-                    </p>
-                  )}
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                <Button 
+                  onClick={handleCadastrado} 
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  disabled={updateStatusMutation.isPending || !allDocsOpened}
+                  data-testid="button-approve"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Cadastro Finalizado
+                </Button>
 
                 <Dialog open={isPendingDialogOpen} onOpenChange={setIsPendingDialogOpen}>
                   <DialogTrigger asChild>
