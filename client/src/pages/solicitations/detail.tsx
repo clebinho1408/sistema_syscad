@@ -37,6 +37,9 @@ import {
   ZoomOut,
   Maximize2,
   X,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldX,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -102,6 +105,8 @@ export default function SolicitationDetailPage() {
   const [isPenaltyDialogOpen, setIsPenaltyDialogOpen] = useState(false);
   const [penaltyReleaseDate, setPenaltyReleaseDate] = useState("");
   const [openedDocs, setOpenedDocs] = useState<Set<string>>(new Set());
+  const [isAuthenticityModalOpen, setIsAuthenticityModalOpen] = useState(false);
+  const [authenticityResult, setAuthenticityResult] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const previousMessagesCount = useRef<number>(0);
@@ -214,6 +219,24 @@ export default function SolicitationDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "documents"] });
+    },
+  });
+
+  const verifyAuthenticityMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const response = await apiRequest("POST", `/api/documents/${documentId}/verify-authenticity`);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setAuthenticityResult(data);
+      setIsAuthenticityModalOpen(true);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro na verificação",
+        description: error.message || "Não foi possível verificar a autenticidade do documento",
+        variant: "destructive",
+      });
     },
   });
 
@@ -1022,6 +1045,123 @@ export default function SolicitationDetailPage() {
                   disabled={!canEdit || isFinalized}
                 >
                   Incompatível
+                </Button>
+                {canEdit && (
+                  <>
+                    <Separator orientation="vertical" className="h-8 hidden sm:block" />
+                    <Button 
+                      variant="secondary" 
+                      size="sm"
+                      onClick={() => verifyAuthenticityMutation.mutate(selectedDoc!.id)}
+                      disabled={verifyAuthenticityMutation.isPending}
+                      data-testid="button-verify-authenticity"
+                    >
+                      {verifyAuthenticityMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="w-4 h-4 mr-2" />
+                      )}
+                      Verificar Autenticidade
+                    </Button>
+                  </>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Modal de Resultado da Verificação de Autenticidade */}
+          <Dialog open={isAuthenticityModalOpen} onOpenChange={setIsAuthenticityModalOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {authenticityResult?.nivelRisco === "BAIXO" && <ShieldCheck className="w-6 h-6 text-green-500" />}
+                  {authenticityResult?.nivelRisco === "MEDIO" && <ShieldAlert className="w-6 h-6 text-yellow-500" />}
+                  {authenticityResult?.nivelRisco === "ALTO" && <ShieldX className="w-6 h-6 text-red-500" />}
+                  Análise de Autenticidade
+                </DialogTitle>
+                <DialogDescription>
+                  Resultado da verificação do documento
+                </DialogDescription>
+              </DialogHeader>
+              
+              {authenticityResult && (
+                <div className="space-y-4">
+                  {/* Resumo */}
+                  <div className={`p-4 rounded-lg border-2 ${
+                    authenticityResult.nivelRisco === "BAIXO" ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800" :
+                    authenticityResult.nivelRisco === "MEDIO" ? "bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800" :
+                    "bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800"
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold">Nível de Risco:</span>
+                      <Badge variant={
+                        authenticityResult.nivelRisco === "BAIXO" ? "default" :
+                        authenticityResult.nivelRisco === "MEDIO" ? "secondary" : "destructive"
+                      }>
+                        {authenticityResult.nivelRisco}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold">Confiança:</span>
+                      <span className="font-mono">{authenticityResult.pontuacaoConfianca}%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">Recomendação:</span>
+                      <Badge variant={
+                        authenticityResult.recomendacao === "APROVAR" ? "default" :
+                        authenticityResult.recomendacao === "SOLICITAR_NOVO_DOCUMENTO" ? "secondary" : "destructive"
+                      }>
+                        {authenticityResult.recomendacao === "APROVAR" ? "Aprovar" :
+                         authenticityResult.recomendacao === "SOLICITAR_NOVO_DOCUMENTO" ? "Solicitar Novo Documento" : "Investigar"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Pontos Suspeitos */}
+                  {authenticityResult.pontosSuspeitos?.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                        Pontos Suspeitos
+                      </h4>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                        {authenticityResult.pontosSuspeitos.map((ponto: string, i: number) => (
+                          <li key={i}>{ponto}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Detalhes da Análise */}
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">Detalhes da Análise</h4>
+                    <div className="grid gap-2 text-sm">
+                      {Object.entries(authenticityResult.detalhesAnalise || {}).map(([key, value]: [string, any]) => (
+                        <div key={key} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                          <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={value.status === "OK" ? "default" : value.status === "SUSPEITO" ? "secondary" : "destructive"} className="text-xs">
+                              {value.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Observações */}
+                  {authenticityResult.observacoes && (
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-sm">Observações</h4>
+                      <p className="text-sm text-muted-foreground">{authenticityResult.observacoes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAuthenticityModalOpen(false)}>
+                  Fechar
                 </Button>
               </DialogFooter>
             </DialogContent>

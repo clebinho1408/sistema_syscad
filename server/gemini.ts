@@ -149,3 +149,103 @@ Todos os textos devem estar em MAIÚSCULAS, sem acentos.`;
 export function isGeminiConfigured(): boolean {
   return !!process.env.GEMINI_API_KEY;
 }
+
+export interface AuthenticityAnalysis {
+  nivelRisco: "BAIXO" | "MEDIO" | "ALTO";
+  pontuacaoConfianca: number;
+  pontosSuspeitos: string[];
+  detalhesAnalise: {
+    fontes: { status: string; descricao: string };
+    alinhamento: { status: string; descricao: string };
+    qualidadeImagem: { status: string; descricao: string };
+    elementosSeguranca: { status: string; descricao: string };
+    consistenciaDados: { status: string; descricao: string };
+  };
+  recomendacao: string;
+  observacoes: string;
+}
+
+export async function analyzeDocumentAuthenticity(imageBase64: string, mimeType: string): Promise<AuthenticityAnalysis> {
+  try {
+    const systemPrompt = `Você é um especialista forense em análise de documentos brasileiros, especializado em detectar adulterações e falsificações.
+
+Analise esta imagem de documento e verifique sinais de adulteração ou falsificação. Examine cuidadosamente:
+
+1. **FONTES E TIPOGRAFIA:**
+   - Consistência das fontes usadas no documento
+   - Tamanho e espaçamento uniformes
+   - Fontes que não correspondem ao padrão oficial do documento
+
+2. **ALINHAMENTO E LAYOUT:**
+   - Textos desalinhados ou inclinados
+   - Espaçamento irregular entre elementos
+   - Posicionamento incorreto de campos
+
+3. **QUALIDADE DA IMAGEM:**
+   - Áreas com qualidade/resolução diferente
+   - Borrões localizados ou artefatos de edição
+   - Diferenças de iluminação em partes específicas
+   - Sinais de recorte e colagem (copy-paste)
+
+4. **ELEMENTOS DE SEGURANÇA:**
+   - Marcas d'água ausentes ou irregulares
+   - Hologramas ou elementos especiais (se visíveis)
+   - Padrões de fundo inconsistentes
+
+5. **CONSISTÊNCIA DOS DADOS:**
+   - Formatos de data incorretos
+   - Números de documento com formato inválido
+   - Informações contraditórias
+
+Responda APENAS com JSON válido no seguinte formato:
+{
+  "nivelRisco": "BAIXO" | "MEDIO" | "ALTO",
+  "pontuacaoConfianca": (número de 0 a 100, onde 100 = documento aparenta ser autêntico),
+  "pontosSuspeitos": ["lista de pontos suspeitos encontrados, se houver"],
+  "detalhesAnalise": {
+    "fontes": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" },
+    "alinhamento": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" },
+    "qualidadeImagem": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" },
+    "elementosSeguranca": { "status": "OK" | "SUSPEITO" | "NAO_VISIVEL", "descricao": "explicação" },
+    "consistenciaDados": { "status": "OK" | "SUSPEITO" | "IRREGULAR", "descricao": "explicação" }
+  },
+  "recomendacao": "APROVAR" | "SOLICITAR_NOVO_DOCUMENTO" | "INVESTIGAR",
+  "observacoes": "observações gerais sobre o documento"
+}
+
+IMPORTANTE:
+- Seja criterioso mas justo. Nem toda imperfeição é sinal de fraude.
+- Considere que fotos de documentos podem ter reflexos, sombras ou distorções naturais.
+- Documentos mais antigos podem ter desgaste natural.
+- Se não conseguir analisar algum aspecto por limitação da imagem, indique isso.`;
+
+    const contents = [
+      {
+        inlineData: {
+          data: imageBase64,
+          mimeType: mimeType,
+        },
+      },
+      systemPrompt,
+    ];
+
+    const response = await getAI().models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: contents,
+    });
+
+    const rawText = response.text || "{}";
+    
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.log("No JSON found in authenticity response:", rawText);
+      throw new Error("Não foi possível analisar o documento");
+    }
+
+    const data: AuthenticityAnalysis = JSON.parse(jsonMatch[0]);
+    return data;
+  } catch (error) {
+    console.error("Failed to analyze document authenticity:", error);
+    throw new Error(`Falha ao verificar autenticidade: ${error}`);
+  }
+}

@@ -8,7 +8,7 @@ import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
 import passport from "passport";
 import { WebSocketServer, WebSocket } from "ws";
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
-import { analyzeDocument, isGeminiConfigured } from "./gemini";
+import { analyzeDocument, analyzeDocumentAuthenticity, isGeminiConfigured } from "./gemini";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -681,6 +681,67 @@ export async function registerRoutes(
       return res.status(404).json({ error: "Conteúdo do documento não disponível" });
     } catch (error: any) {
       console.error("Error downloading document:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Verify document authenticity (operador/admin only)
+  app.post("/api/documents/:id/verify-authenticity", requireAuth, requireRole("operador", "admin"), async (req, res) => {
+    try {
+      if (!isGeminiConfigured()) {
+        return res.status(503).json({ 
+          error: "Verificação de autenticidade não configurada",
+          message: "A chave GEMINI_API_KEY não está configurada no sistema"
+        });
+      }
+
+      const document = await storage.getDocumentById(req.params.id);
+      if (!document) {
+        return res.status(404).json({ error: "Documento não encontrado" });
+      }
+
+      let imageBase64: string | null = null;
+      let mimeType = document.fileType || "image/jpeg";
+
+      // Get document content from object storage or base64
+      if (document.fileKey) {
+        try {
+          const objectFile = await objectStorageService.getObjectEntityFile(document.fileKey);
+          const chunks: Buffer[] = [];
+          for await (const chunk of objectFile.createReadStream()) {
+            chunks.push(Buffer.from(chunk));
+          }
+          imageBase64 = Buffer.concat(chunks).toString("base64");
+        } catch (error) {
+          console.error("Error fetching from object storage:", error);
+          return res.status(404).json({ error: "Arquivo não encontrado no armazenamento" });
+        }
+      } else if (document.fileData) {
+        imageBase64 = document.fileData.split(",")[1] || document.fileData;
+      }
+
+      if (!imageBase64) {
+        return res.status(404).json({ error: "Conteúdo do documento não disponível" });
+      }
+
+      const result = await analyzeDocumentAuthenticity(imageBase64, mimeType);
+      
+      // Log the authenticity check
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "verify_authenticity",
+        entity: "document",
+        entityId: req.params.id,
+        details: JSON.stringify({ 
+          nivelRisco: result.nivelRisco, 
+          recomendacao: result.recomendacao,
+          pontuacaoConfianca: result.pontuacaoConfianca
+        }),
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error verifying document authenticity:", error);
       res.status(500).json({ error: error.message });
     }
   });
