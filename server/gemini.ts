@@ -255,29 +255,6 @@ export async function analyzeDocumentAuthenticity(
         }
       }
       
-      
-      // Verifica se foi modificado recentemente (documentos oficiais geralmente não são modificados após emissão)
-      if (pdfMetadata.dataCriacao && pdfMetadata.dataModificacao) {
-        const criacao = new Date(pdfMetadata.dataCriacao);
-        const modificacao = new Date(pdfMetadata.dataModificacao);
-        const diffMinutes = (modificacao.getTime() - criacao.getTime()) / (1000 * 60);
-        
-        if (diffMinutes > 5) {
-          metadataWarnings.push(`PDF modificado ${Math.round(diffMinutes)} minutos após criação`);
-        }
-      }
-      
-      // Verifica data de criação muito recente para documentos que deveriam ser antigos
-      if (pdfMetadata.dataCriacao) {
-        const criacao = new Date(pdfMetadata.dataCriacao);
-        const agora = new Date();
-        const diffDays = (agora.getTime() - criacao.getTime()) / (1000 * 60 * 60 * 24);
-        
-        if (diffDays < 1) {
-          metadataWarnings.push(`PDF criado nas últimas 24 horas (${criacao.toLocaleDateString('pt-BR')})`);
-        }
-      }
-      
       // Verifica palavras-chave suspeitas
       if (pdfMetadata.palavrasChave) {
         const keywords = pdfMetadata.palavrasChave.toLowerCase();

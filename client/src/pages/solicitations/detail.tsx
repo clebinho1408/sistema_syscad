@@ -1094,11 +1094,16 @@ export default function SolicitationDetailPage() {
                     <h4 className="font-semibold text-sm">Detalhes da Análise</h4>
                     <div className="grid gap-2 text-sm">
                       {Object.entries(authenticityResult.detalhesAnalise || {}).map(([key, value]: [string, any]) => (
-                        <div key={key} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                          <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                          <Badge variant={value.status === "OK" ? "default" : value.status === "SUSPEITO" ? "secondary" : "destructive"} className="text-xs">
-                            {value.status}
-                          </Badge>
+                        <div key={key} className="p-2 bg-muted/50 rounded">
+                          <div className="flex items-center justify-between">
+                            <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                            <Badge variant={value.status === "OK" ? "default" : value.status === "SUSPEITO" ? "secondary" : "destructive"} className="text-xs">
+                              {value.status}
+                            </Badge>
+                          </div>
+                          {value.status !== "OK" && value.descricao && (
+                            <p className="text-xs text-muted-foreground mt-1">{value.descricao}</p>
+                          )}
                         </div>
                       ))}
                     </div>
