@@ -365,6 +365,14 @@ export default function NewSolicitationPage() {
         form.setValue("rg", data.rg);
         fieldsUpdated++;
       }
+      if (data.orgaoEmissor) {
+        form.setValue("orgaoEmissor", toUpperWithoutAccents(data.orgaoEmissor));
+        fieldsUpdated++;
+      }
+      if (data.ufEmissor) {
+        form.setValue("ufEmissor", data.ufEmissor);
+        fieldsUpdated++;
+      }
       if (data.dataNascimento) {
         form.setValue("dataNascimento", data.dataNascimento);
         fieldsUpdated++;

@@ -17,6 +17,8 @@ export interface DocumentData {
   nome?: string;
   cpf?: string;
   rg?: string;
+  orgaoEmissor?: string;
+  ufEmissor?: string;
   dataNascimento?: string;
   sexo?: string;
   nomeMae?: string;
@@ -29,10 +31,12 @@ export interface DocumentData {
 export async function analyzeDocument(imageBase64: string, mimeType: string): Promise<DocumentData> {
   try {
     const systemPrompt = `Você é um especialista em análise de documentos brasileiros.
-Analise esta imagem de documento de identificação (RG, CNH, Identidade ou similar) e extraia as seguintes informações:
-- nome: nome completo da pessoa
+Analise esta imagem de documento de identificação (RG, CNH, CNH Digital, Identidade ou similar) e extraia as seguintes informações:
+- nome: nome completo da pessoa (nome civil)
 - cpf: número do CPF (apenas números, 11 dígitos)
 - rg: número do RG/Identidade (apenas números)
+- orgaoEmissor: órgão emissor do RG (ex: SSP, DETRAN, PC, etc.)
+- ufEmissor: UF do órgão emissor (sigla de 2 letras)
 - dataNascimento: data de nascimento no formato YYYY-MM-DD
 - sexo: MASCULINO ou FEMININO
 - nomeMae: nome da mãe
@@ -40,6 +44,11 @@ Analise esta imagem de documento de identificação (RG, CNH, Identidade ou simi
 - nacionalidade: nacionalidade (ex: BRASILEIRO)
 - naturalidade: cidade de nascimento
 - ufNascimento: UF de nascimento (sigla de 2 letras)
+
+IMPORTANTE sobre CNH Digital:
+- Na CNH Digital, o nome civil está no campo "2 e 1 Nome e Sobrenome" ou similar - extraia esse valor para o campo "nome"
+- Após o número do RG, há um campo com o órgão emissor (ex: SSP, DETRAN, PC) - extraia para "orgaoEmissor"
+- Após o órgão emissor, há a UF emissora (ex: SP, SC, RJ) - extraia para "ufEmissor"
 
 IMPORTANTE sobre documentos "RG e CPF" ou "Identidade Digital":
 - Alguns estados emitem RG onde o número do documento É o próprio CPF (documento "RG e CPF" ou "Identidade Digital")
