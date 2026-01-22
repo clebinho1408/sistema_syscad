@@ -321,6 +321,7 @@ export default function NewSolicitationPage() {
   const [customCidade, setCustomCidade] = useState<string>("");
   const [customCidadeNascimento, setCustomCidadeNascimento] = useState<string>("");
   const [ocrCompleted, setOcrCompleted] = useState(false);
+  const [ocrCooldown, setOcrCooldown] = useState(false);
 
   const { data: ocrStatus } = useQuery<{ available: boolean }>({
     queryKey: ["/api/documents/ocr-status"],
@@ -408,6 +409,9 @@ export default function NewSolicitationPage() {
         title: "Documento analisado!",
         description: `${fieldsUpdated} campo(s) preenchido(s) automaticamente. Verifique os dados.`,
       });
+      // Ativa cooldown de 15 segundos após análise
+      setOcrCooldown(true);
+      setTimeout(() => setOcrCooldown(false), 15000);
     },
     onError: (error: Error) => {
       toast({
@@ -415,6 +419,9 @@ export default function NewSolicitationPage() {
         description: error.message,
         variant: "destructive",
       });
+      // Ativa cooldown mesmo em caso de erro
+      setOcrCooldown(true);
+      setTimeout(() => setOcrCooldown(false), 15000);
     },
   });
 
@@ -630,7 +637,7 @@ export default function NewSolicitationPage() {
                     <Button 
                       type="button" 
                       variant="outline" 
-                      disabled={ocrMutation.isPending}
+                      disabled={ocrMutation.isPending || ocrCooldown}
                       onClick={() => document.getElementById("ocr-upload")?.click()}
                       data-testid="button-ocr-upload"
                     >
