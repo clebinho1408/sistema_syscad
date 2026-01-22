@@ -354,16 +354,17 @@ PESOS DE IMPORTÂNCIA NA ANÁLISE:
       - Verifique: RUA, NÚMERO, BAIRRO, CIDADE, CEP
       - SUSPEITO: bairro diferente em uma parte vs outra, rua com nome diferente, CEP não confere
    
-   c) **DATA DE EMISSÃO / DATA DO DOCUMENTO:** (muito editado em fraudes)
-      - Data de emissão = quando o documento foi GERADO pelo sistema
-      - A data de emissão está no FUTURO? (Ex: março 2026 quando estamos em janeiro 2026)
-      - SUSPEITO: qualquer data de emissão futura
-      - IGNORE data de vencimento - não é relevante para fraude
+   c) **HISTÓRICO DE CONSUMO vs MÊS DE REFERÊNCIA:** (muito editado em fraudes)
+      - Verifique se existe um HISTÓRICO DE CONSUMO no documento
+      - A DATA DE LEITURA ATUAL (última leitura) deve BATER com o MÊS DE REFERÊNCIA
+      - Se a referência é 11/2025, a leitura atual deve ser de novembro/2025
+      - SUSPEITO: mês de referência não confere com a data da última leitura
+      - IGNORE data de emissão e data de vencimento - não são relevantes
    
    d) **MÊS DE REFERÊNCIA:** (muito editado em fraudes)
       - O mês de referência é MUITO editado em documentos falsos
       - Referência de mês futuro é MUITO SUSPEITO
-      - Referência que não faz sentido com a data de emissão é SUSPEITO
+      - Compare com o histórico de consumo para validar
    
    e) **CPF/RG/CNPJ:**
       - Formato válido? (CPF = 11 dígitos, RG varia por estado)
