@@ -51,7 +51,10 @@ IMPORTANTE sobre PASSAPORTE:
 - Se for passaporte, coloque tipoDocumento como "PASSAPORTE"
 - O número do passaporte tem formato: 2 letras + 6 números (ex: AA123456) - coloque no campo "rg" COMPLETO com as letras
 - O órgão emissor do passaporte geralmente é "SR/DPF" ou "DPF" seguido da UF
-- O nome no passaporte pode estar dividido em "Surname/Sobrenome" e "Given Names/Nome" - junte ambos para formar o nome completo
+- No passaporte, o nome está dividido em "Sobrenome / Surname" e "Nome / Given Names".
+- O PRIMEIRO NOME sempre vem abaixo do SOBRENOME.
+- Você DEVE juntar os dois na ordem correta: [Nome / Given Names] [Sobrenome / Surname] para formar o nome completo no campo "nome".
+- Exemplo: Sobrenome "ALBERTO DA SILVA OLIVEIRA FILHO" e Nome "ANTONIO JOAO" deve resultar em "ANTONIO JOAO ALBERTO DA SILVA OLIVEIRA FILHO".
 - No passaporte, o CPF pode estar no campo "CPF / Personal Number"
 
 IMPORTANTE sobre CNH Digital:
