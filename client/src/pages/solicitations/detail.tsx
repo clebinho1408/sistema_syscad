@@ -1071,67 +1071,24 @@ export default function SolicitationDetailPage() {
 
           {/* Modal de Resultado da Verificação de Autenticidade */}
           <Dialog open={isAuthenticityModalOpen} onOpenChange={setIsAuthenticityModalOpen}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   {authenticityResult?.nivelRisco === "BAIXO" && <ShieldCheck className="w-6 h-6 text-green-500" />}
                   {authenticityResult?.nivelRisco === "MEDIO" && <ShieldAlert className="w-6 h-6 text-yellow-500" />}
                   {authenticityResult?.nivelRisco === "ALTO" && <ShieldX className="w-6 h-6 text-red-500" />}
                   Análise de Autenticidade
+                  <Badge variant={
+                    authenticityResult?.nivelRisco === "BAIXO" ? "default" :
+                    authenticityResult?.nivelRisco === "MEDIO" ? "secondary" : "destructive"
+                  } className="ml-2">
+                    {authenticityResult?.pontuacaoConfianca}% confiança
+                  </Badge>
                 </DialogTitle>
-                <DialogDescription>
-                  Resultado da verificação do documento
-                </DialogDescription>
               </DialogHeader>
               
               {authenticityResult && (
-                <div className="space-y-4">
-                  {/* Resumo */}
-                  <div className={`p-4 rounded-lg border-2 ${
-                    authenticityResult.nivelRisco === "BAIXO" ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800" :
-                    authenticityResult.nivelRisco === "MEDIO" ? "bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800" :
-                    "bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800"
-                  }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold">Nível de Risco:</span>
-                      <Badge variant={
-                        authenticityResult.nivelRisco === "BAIXO" ? "default" :
-                        authenticityResult.nivelRisco === "MEDIO" ? "secondary" : "destructive"
-                      }>
-                        {authenticityResult.nivelRisco}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold">Confiança:</span>
-                      <span className="font-mono">{authenticityResult.pontuacaoConfianca}%</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">Recomendação:</span>
-                      <Badge variant={
-                        authenticityResult.recomendacao === "APROVAR" ? "default" :
-                        authenticityResult.recomendacao === "SOLICITAR_NOVO_DOCUMENTO" ? "secondary" : "destructive"
-                      }>
-                        {authenticityResult.recomendacao === "APROVAR" ? "Aprovar" :
-                         authenticityResult.recomendacao === "SOLICITAR_NOVO_DOCUMENTO" ? "Solicitar Novo Documento" : "Investigar"}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Pontos Suspeitos */}
-                  {authenticityResult.pontosSuspeitos?.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                        Pontos Suspeitos
-                      </h4>
-                      <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                        {authenticityResult.pontosSuspeitos.map((ponto: string, i: number) => (
-                          <li key={i}>{ponto}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Detalhes da Análise */}
                   <div className="space-y-2">
                     <h4 className="font-semibold text-sm">Detalhes da Análise</h4>
@@ -1139,97 +1096,81 @@ export default function SolicitationDetailPage() {
                       {Object.entries(authenticityResult.detalhesAnalise || {}).map(([key, value]: [string, any]) => (
                         <div key={key} className="flex items-center justify-between p-2 bg-muted/50 rounded">
                           <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={value.status === "OK" ? "default" : value.status === "SUSPEITO" ? "secondary" : "destructive"} className="text-xs">
-                              {value.status}
-                            </Badge>
-                          </div>
+                          <Badge variant={value.status === "OK" ? "default" : value.status === "SUSPEITO" ? "secondary" : "destructive"} className="text-xs">
+                            {value.status}
+                          </Badge>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Metadados do PDF */}
-                  {authenticityResult.metadatasPdf && Object.keys(authenticityResult.metadatasPdf).length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        Metadados do PDF
-                      </h4>
-                      <div className="bg-muted/30 p-3 rounded-lg border">
-                        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                          {authenticityResult.metadatasPdf.titulo && (
-                            <>
-                              <span className="text-muted-foreground whitespace-nowrap">Título:</span>
-                              <span className="font-mono text-xs break-all">{authenticityResult.metadatasPdf.titulo}</span>
-                            </>
-                          )}
-                          {authenticityResult.metadatasPdf.autor && (
-                            <>
-                              <span className="text-muted-foreground whitespace-nowrap">Autor:</span>
-                              <span className="font-mono text-xs break-all">
-                                {authenticityResult.metadatasPdf.autor}
-                              </span>
-                            </>
-                          )}
-                          {authenticityResult.metadatasPdf.criador && (
-                            <>
-                              <span className="text-muted-foreground whitespace-nowrap">Software Criador:</span>
-                              <span className={`font-mono text-xs break-all ${
-                                /canva|photoshop|gimp|paint|word|libreoffice|pixlr|fotor|abbyy|ocr|camscanner|smallpdf|ilovepdf|sejda|pdf24|nitro|pdfelement/i.test(authenticityResult.metadatasPdf.criador) 
-                                  ? 'text-red-500 font-bold' : ''
-                              }`}>
-                                {authenticityResult.metadatasPdf.criador}
-                              </span>
-                            </>
-                          )}
-                          {authenticityResult.metadatasPdf.produtor && (
-                            <>
-                              <span className="text-muted-foreground whitespace-nowrap">Produtor:</span>
-                              <span className={`font-mono text-xs break-all ${
-                                /canva|photoshop|gimp|paint|word|libreoffice|pixlr|fotor|abbyy|ocr|camscanner|smallpdf|ilovepdf|sejda|pdf24|nitro|pdfelement/i.test(authenticityResult.metadatasPdf.produtor) 
-                                  ? 'text-red-500 font-bold' : ''
-                              }`}>
-                                {authenticityResult.metadatasPdf.produtor}
-                              </span>
-                            </>
-                          )}
-                          {authenticityResult.metadatasPdf.palavrasChave && (
-                            <>
-                              <span className="text-muted-foreground whitespace-nowrap">Palavras-chave:</span>
-                              <span className="font-mono text-xs break-all">{authenticityResult.metadatasPdf.palavrasChave}</span>
-                            </>
-                          )}
-                          {authenticityResult.metadatasPdf.dataCriacao && (
-                            <>
-                              <span className="text-muted-foreground whitespace-nowrap">Criado em:</span>
-                              <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataCriacao).toLocaleString('pt-BR')}</span>
-                            </>
-                          )}
-                          {authenticityResult.metadatasPdf.dataModificacao && (
-                            <>
-                              <span className="text-muted-foreground whitespace-nowrap">Modificado em:</span>
-                              <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataModificacao).toLocaleString('pt-BR')}</span>
-                            </>
-                          )}
-                          {authenticityResult.metadatasPdf.numeroPaginas && (
-                            <>
-                              <span className="text-muted-foreground whitespace-nowrap">Páginas:</span>
-                              <span className="font-mono text-xs">{authenticityResult.metadatasPdf.numeroPaginas}</span>
-                            </>
-                          )}
-                        </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Metadados do PDF
+                    </h4>
+                    {authenticityResult.metadatasPdf && Object.keys(authenticityResult.metadatasPdf).length > 0 ? (
+                      <div className="bg-muted/30 p-3 rounded-lg border text-sm space-y-1">
+                        {authenticityResult.metadatasPdf.titulo && (
+                          <div className="flex gap-2">
+                            <span className="text-muted-foreground shrink-0">Título:</span>
+                            <span className="font-mono text-xs break-all">{authenticityResult.metadatasPdf.titulo}</span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.autor && (
+                          <div className="flex gap-2">
+                            <span className="text-muted-foreground shrink-0">Autor:</span>
+                            <span className="font-mono text-xs break-all">{authenticityResult.metadatasPdf.autor}</span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.criador && (
+                          <div className="flex gap-2">
+                            <span className="text-muted-foreground shrink-0">Software:</span>
+                            <span className={`font-mono text-xs break-all ${
+                              /canva|photoshop|gimp|paint|word|libreoffice|pixlr|fotor|abbyy|ocr|camscanner|smallpdf|ilovepdf|sejda|pdf24|nitro|pdfelement/i.test(authenticityResult.metadatasPdf.criador) 
+                                ? 'text-red-500 font-bold' : ''
+                            }`}>
+                              {authenticityResult.metadatasPdf.criador}
+                            </span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.produtor && (
+                          <div className="flex gap-2">
+                            <span className="text-muted-foreground shrink-0">Produtor:</span>
+                            <span className={`font-mono text-xs break-all ${
+                              /canva|photoshop|gimp|paint|word|libreoffice|pixlr|fotor|abbyy|ocr|camscanner|smallpdf|ilovepdf|sejda|pdf24|nitro|pdfelement/i.test(authenticityResult.metadatasPdf.produtor) 
+                                ? 'text-red-500 font-bold' : ''
+                            }`}>
+                              {authenticityResult.metadatasPdf.produtor}
+                            </span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.dataCriacao && (
+                          <div className="flex gap-2">
+                            <span className="text-muted-foreground shrink-0">Criado:</span>
+                            <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataCriacao).toLocaleString('pt-BR')}</span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.dataModificacao && (
+                          <div className="flex gap-2">
+                            <span className="text-muted-foreground shrink-0">Modificado:</span>
+                            <span className="font-mono text-xs">{new Date(authenticityResult.metadatasPdf.dataModificacao).toLocaleString('pt-BR')}</span>
+                          </div>
+                        )}
+                        {authenticityResult.metadatasPdf.numeroPaginas && (
+                          <div className="flex gap-2">
+                            <span className="text-muted-foreground shrink-0">Páginas:</span>
+                            <span className="font-mono text-xs">{authenticityResult.metadatasPdf.numeroPaginas}</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Observações */}
-                  {authenticityResult.observacoes && (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm">Observações</h4>
-                      <p className="text-sm text-muted-foreground">{authenticityResult.observacoes}</p>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="bg-muted/30 p-3 rounded-lg border text-sm text-muted-foreground">
+                        Metadados não disponíveis (documento não é PDF)
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
