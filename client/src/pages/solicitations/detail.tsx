@@ -108,10 +108,14 @@ export default function SolicitationDetailPage() {
   const [isAuthenticityModalOpen, setIsAuthenticityModalOpen] = useState(false);
   const [authenticityResult, setAuthenticityResult] = useState<any>(null);
   const [verificationCooldown, setVerificationCooldown] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [typingUsers, setTypingUsers] = useState<{ id: string; name: string }[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const previousMessagesCount = useRef<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -120,6 +124,51 @@ export default function SolicitationDetailPage() {
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
+
+  useEffect(() => {
+    if (!params?.id || !user) return;
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws?solicitationId=${params.id}&userId=${user.id}&userName=${encodeURIComponent(user.name)}&userRole=${user.role}`;
+    
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "presence") {
+          const newOnlineUsers = data.onlineUsers.filter((u: any) => u.id !== user.id);
+          setOnlineUsers(newOnlineUsers);
+          const onlineUserIds = new Set(newOnlineUsers.map((u: any) => u.id));
+          setTypingUsers((prev) => prev.filter((u) => onlineUserIds.has(u.id)));
+        } else if (data.type === "typing") {
+          if (data.userId !== user.id) {
+            if (data.isTyping) {
+              setTypingUsers((prev) => {
+                if (!prev.find((u) => u.id === data.userId)) {
+                  return [...prev, { id: data.userId, name: data.userName }];
+                }
+                return prev;
+              });
+            } else {
+              setTypingUsers((prev) => prev.filter((u) => u.id !== data.userId));
+            }
+          }
+        } else if (data.type === "newMessage") {
+          queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params.id, "messages"] });
+        }
+      } catch (e) {}
+    };
+
+    return () => {
+      ws.close();
+      wsRef.current = null;
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [params?.id, user, queryClient]);
 
   useEffect(() => {
     if (isChatPopupOpen && params?.id) {
@@ -177,17 +226,43 @@ export default function SolicitationDetailPage() {
   useEffect(() => {
     if (messages && messages.length > previousMessagesCount.current) {
       const lastMessage = messages[messages.length - 1];
-      if (previousMessagesCount.current > 0 && lastMessage.senderId !== user?.id) {
+      if (previousMessagesCount.current > 0 && lastMessage.senderId !== user?.id && !isChatPopupOpen) {
         try {
           if (!audioRef.current) {
-            audioRef.current = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleRMHUpr/uXVfLyB3mKWXdT8/iJujgHRJVnNwa2lQNDxbYGBONi0qGR0dGBQQEBgsMTMvLCkfIikoMTM1N0FISkxPVFpe");
+            audioRef.current = new Audio("data:audio/wav;base64,UklGRl4FAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YToFAAB4eHh4eHh4eHh4eHh4d3Z1dHNycXBvbm1sa2ppaGdmZWRjYmFgX15dXFtaWVhXVlVUU1JRUE9OTUxLSklIR0ZFRENCQUA/Pj08Ozo5ODc2NTQzMjEwLy4tLCsqKSgnJiUkIyIhIB8eHRwbGhkYFxYVFBMSERAPDg0MCwoJCAcGBQQDAgEAAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4/QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl9gYWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eHh4eHh4eHh4eHh4eHh4");
           }
           audioRef.current.play().catch(() => {});
         } catch {}
       }
     }
     previousMessagesCount.current = messages?.length || 0;
-  }, [messages, user?.id]);
+  }, [messages, user?.id, isChatPopupOpen]);
+
+  const sendTypingIndicator = (isTyping: boolean) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && user) {
+      wsRef.current.send(JSON.stringify({
+        type: "typing",
+        userId: user.id,
+        userName: user.name,
+        isTyping,
+      }));
+    }
+  };
+
+  const handleMessageChange = (value: string) => {
+    setNewMessage(value);
+    if (value.length > 0) {
+      sendTypingIndicator(true);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTypingIndicator(false);
+      }, 2000);
+    } else {
+      sendTypingIndicator(false);
+    }
+  };
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -195,6 +270,10 @@ export default function SolicitationDetailPage() {
     },
     onSuccess: () => {
       setNewMessage("");
+      sendTypingIndicator(false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "messages"] });
     },
   });
@@ -1145,6 +1224,12 @@ export default function SolicitationDetailPage() {
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-5 h-5 text-primary" />
                   Chat Interno
+                  {onlineUsers.length > 0 && (
+                    <span className="flex items-center gap-1 text-xs font-normal text-green-600">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      {onlineUsers.map(u => u.role === "autoescola" ? "Autoescola" : "Operador").join(", ")} online
+                    </span>
+                  )}
                 </div>
                 <Button 
                   variant="ghost" 
@@ -1162,27 +1247,37 @@ export default function SolicitationDetailPage() {
                   key={msg.id} 
                   className={`flex flex-col ${msg.senderId === user?.id ? "items-end" : "items-start"}`}
                 >
-                  <p className={`text-[10px] mb-1 ${msg.senderId === user?.id ? "text-right" : "text-left"} text-muted-foreground`}>
-                    {msg.senderName} - {format(new Date(msg.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                  <p className={`text-sm font-medium mb-1 ${msg.senderId === user?.id ? "text-right" : "text-left"} text-muted-foreground`}>
+                    {msg.senderName} • {format(new Date(msg.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                   </p>
-                  <div className={`max-w-[85%] p-3 rounded-lg ${
+                  <div className={`max-w-[80%] p-3 rounded-lg ${
                     msg.senderId === user?.id 
                       ? "bg-primary text-primary-foreground rounded-tr-none" 
                       : msg.message.startsWith("[SISTEMA]") || msg.message.startsWith("[PEDIDO DE ACESSO]")
-                        ? "bg-muted text-muted-foreground w-full text-center text-xs"
+                        ? "bg-muted text-muted-foreground w-full text-center text-sm"
                         : "bg-muted rounded-tl-none"
                   }`}>
-                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                    <p className="whitespace-pre-wrap">{msg.message}</p>
                   </div>
                 </div>
               ))}
+              {typingUsers.length > 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground italic">
+                  <span className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </span>
+                  {typingUsers.map(u => u.name).join(", ")} digitando...
+                </div>
+              )}
             </CardContent>
             <CardFooter className="p-4 pt-0 flex-shrink-0">
               <form onSubmit={handleSendMessage} className="flex w-full gap-2">
                 <Input 
                   placeholder="Digite uma mensagem..." 
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={(e) => handleMessageChange(e.target.value)}
                   disabled={isFinalized}
                   data-testid="input-chat-message"
                 />
@@ -1195,10 +1290,16 @@ export default function SolicitationDetailPage() {
 
           <Dialog open={isChatPopupOpen} onOpenChange={setIsChatPopupOpen}>
             <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
-              <DialogHeader className="p-6 pb-0">
+              <DialogHeader className="p-6 pb-2">
                 <DialogTitle className="flex items-center gap-2">
                   <MessageSquare className="w-5 h-5" />
                   Chat Interno
+                  {onlineUsers.length > 0 && (
+                    <span className="flex items-center gap-1 text-xs font-normal text-green-600">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      {onlineUsers.map(u => u.role === "autoescola" ? "Autoescola" : "Operador").join(", ")} online
+                    </span>
+                  )}
                 </DialogTitle>
               </DialogHeader>
               <div ref={popupChatContainerRef} className="flex-1 overflow-y-auto space-y-4 p-6 min-h-0">
@@ -1207,27 +1308,37 @@ export default function SolicitationDetailPage() {
                     key={msg.id} 
                     className={`flex flex-col ${msg.senderId === user?.id ? "items-end" : "items-start"}`}
                   >
-                    <p className={`text-xs mb-1 ${msg.senderId === user?.id ? "text-right" : "text-left"} text-muted-foreground`}>
-                      {msg.senderName} - {format(new Date(msg.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                    <p className={`text-sm font-medium mb-1 ${msg.senderId === user?.id ? "text-right" : "text-left"} text-muted-foreground`}>
+                      {msg.senderName} • {format(new Date(msg.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                     </p>
-                    <div className={`max-w-[70%] p-4 rounded-lg ${
+                    <div className={`max-w-[80%] p-3 rounded-lg ${
                       msg.senderId === user?.id 
                         ? "bg-primary text-primary-foreground rounded-tr-none" 
                         : msg.message.startsWith("[SISTEMA]") || msg.message.startsWith("[PEDIDO DE ACESSO]")
-                          ? "bg-muted text-muted-foreground w-full text-center"
+                          ? "bg-muted text-muted-foreground w-full text-center text-sm"
                           : "bg-muted rounded-tl-none"
                     }`}>
                       <p className="whitespace-pre-wrap">{msg.message}</p>
                     </div>
                   </div>
                 ))}
+                {typingUsers.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground italic">
+                    <span className="flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </span>
+                    {typingUsers.map(u => u.name).join(", ")} digitando...
+                  </div>
+                )}
               </div>
               <div className="p-6 pt-0">
                 <form onSubmit={handleSendMessage} className="flex w-full gap-2">
                   <Input 
                     placeholder="Digite uma mensagem..." 
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={(e) => handleMessageChange(e.target.value)}
                     disabled={solicitation.status === "aprovada"}
                     data-testid="input-chat-message-popup"
                   />

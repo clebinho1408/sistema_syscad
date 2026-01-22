@@ -35,31 +35,70 @@ export async function registerRoutes(
   }, 5 * 60 * 1000);
 
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
-  const clients = new Map<string, Set<WebSocket>>();
+  const clients = new Map<string, Set<{ ws: WebSocket; userId: string; userName: string; userRole: string }>>();
 
   wss.on("connection", (ws, req) => {
     const url = new URL(req.url || "", `http://${req.headers.host}`);
     const solicitationId = url.searchParams.get("solicitationId");
+    const userId = url.searchParams.get("userId") || "";
+    const userName = url.searchParams.get("userName") || "";
+    const userRole = url.searchParams.get("userRole") || "";
     
     if (solicitationId) {
       if (!clients.has(solicitationId)) {
         clients.set(solicitationId, new Set());
       }
-      clients.get(solicitationId)!.add(ws);
+      const clientInfo = { ws, userId, userName, userRole };
+      clients.get(solicitationId)!.add(clientInfo);
+
+      broadcastPresence(solicitationId);
+
+      ws.on("message", (data) => {
+        try {
+          const message = JSON.parse(data.toString());
+          if (message.type === "typing") {
+            broadcastToSolicitation(solicitationId, {
+              type: "typing",
+              userId: message.userId,
+              userName: message.userName,
+              isTyping: message.isTyping,
+            });
+          }
+        } catch (e) {
+        }
+      });
 
       ws.on("close", () => {
-        clients.get(solicitationId)?.delete(ws);
+        clients.get(solicitationId)?.delete(clientInfo);
+        broadcastPresence(solicitationId);
       });
     }
   });
+
+  function broadcastPresence(solicitationId: string) {
+    const solicitationClients = clients.get(solicitationId);
+    if (solicitationClients) {
+      const onlineUsers = Array.from(solicitationClients).map(c => ({
+        id: c.userId,
+        name: c.userName,
+        role: c.userRole,
+      }));
+      const data = JSON.stringify({ type: "presence", onlineUsers });
+      solicitationClients.forEach((client) => {
+        if (client.ws.readyState === WebSocket.OPEN) {
+          client.ws.send(data);
+        }
+      });
+    }
+  }
 
   function broadcastToSolicitation(solicitationId: string, message: any) {
     const solicitationClients = clients.get(solicitationId);
     if (solicitationClients) {
       const data = JSON.stringify(message);
       solicitationClients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(data);
+        if (client.ws.readyState === WebSocket.OPEN) {
+          client.ws.send(data);
         }
       });
     }
