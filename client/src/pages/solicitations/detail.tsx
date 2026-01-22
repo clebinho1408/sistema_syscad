@@ -1167,10 +1167,7 @@ export default function SolicitationDetailPage() {
                           {authenticityResult.metadatasPdf.autor && (
                             <>
                               <span className="text-muted-foreground whitespace-nowrap">Autor:</span>
-                              <span className={`font-mono text-xs break-all ${
-                                /canva|grafica|gráfica|impressões|impressoes|copiadora|papelaria/i.test(authenticityResult.metadatasPdf.autor) 
-                                  ? 'text-red-500 font-bold' : ''
-                              }`}>
+                              <span className="font-mono text-xs break-all">
                                 {authenticityResult.metadatasPdf.autor}
                               </span>
                             </>

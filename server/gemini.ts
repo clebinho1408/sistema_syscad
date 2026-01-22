@@ -235,8 +235,6 @@ export async function analyzeDocumentAuthenticity(
       "adobe scan", "microsoft lens", "camscanner", "scanbot", "genius scan",
       // Conversores PDF
       "nitro", "pdf-xchange", "pdfforge", "pdfelement", "foxit phantompdf",
-      // Gráficas e impressões
-      "casa das impressões", "gráfica", "grafica", "copiadora", "papelaria",
       // Editores de PDF
       "pdfescape", "pdf-editor", "pdf editor", "pdf pro", "pdfpen", "formswift"
     ];
@@ -257,10 +255,6 @@ export async function analyzeDocumentAuthenticity(
         }
       }
       
-      // Verifica autor suspeito
-      if (autor && (autor.includes("grafica") || autor.includes("impressões") || autor.includes("impressoes"))) {
-        metadataWarnings.push(`Autor do PDF suspeito: ${pdfMetadata.autor}`);
-      }
       
       // Verifica se foi modificado recentemente (documentos oficiais geralmente não são modificados após emissão)
       if (pdfMetadata.dataCriacao && pdfMetadata.dataModificacao) {
