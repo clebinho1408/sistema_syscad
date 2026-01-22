@@ -29,10 +29,10 @@ export interface DocumentData {
 export async function analyzeDocument(imageBase64: string, mimeType: string): Promise<DocumentData> {
   try {
     const systemPrompt = `Você é um especialista em análise de documentos brasileiros.
-Analise esta imagem de documento de identificação (RG, CNH ou similar) e extraia as seguintes informações:
+Analise esta imagem de documento de identificação (RG, CNH, Identidade ou similar) e extraia as seguintes informações:
 - nome: nome completo da pessoa
 - cpf: número do CPF (apenas números, 11 dígitos)
-- rg: número do RG
+- rg: número do RG/Identidade (apenas números)
 - dataNascimento: data de nascimento no formato YYYY-MM-DD
 - sexo: MASCULINO ou FEMININO
 - nomeMae: nome da mãe
@@ -40,6 +40,12 @@ Analise esta imagem de documento de identificação (RG, CNH ou similar) e extra
 - nacionalidade: nacionalidade (ex: BRASILEIRO)
 - naturalidade: cidade de nascimento
 - ufNascimento: UF de nascimento (sigla de 2 letras)
+
+IMPORTANTE sobre documentos "RG e CPF" ou "Identidade Digital":
+- Alguns estados emitem RG onde o número do documento É o próprio CPF (documento "RG e CPF" ou "Identidade Digital")
+- Nesses documentos, o número do RG/Identidade tem 11 dígitos e é igual ao CPF
+- Se identificar esse tipo de documento, use o mesmo número para ambos os campos (rg e cpf)
+- Se o documento mostrar apenas um número de 11 dígitos como identificador principal, coloque esse número em ambos os campos
 
 Responda APENAS com JSON válido no formato especificado. Se algum campo não for legível ou não existir no documento, omita-o do JSON.
 Todos os textos devem estar em MAIÚSCULAS, sem acentos.`;
@@ -68,6 +74,20 @@ Todos os textos devem estar em MAIÚSCULAS, sem acentos.`;
     }
 
     const data: DocumentData = JSON.parse(jsonMatch[0]);
+    
+    // Pós-processamento: se tiver RG de 11 dígitos e não tiver CPF, usa o RG como CPF
+    if (data.rg && !data.cpf) {
+      const rgDigits = data.rg.replace(/\D/g, "");
+      if (rgDigits.length === 11) {
+        data.cpf = rgDigits;
+      }
+    }
+    
+    // Se tiver CPF e não tiver RG, usa o CPF como RG (para documentos "RG e CPF")
+    if (data.cpf && !data.rg) {
+      data.rg = data.cpf.replace(/\D/g, "");
+    }
+    
     return data;
   } catch (error) {
     console.error("Failed to analyze document:", error);
