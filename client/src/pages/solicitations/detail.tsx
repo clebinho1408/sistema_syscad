@@ -996,74 +996,21 @@ export default function SolicitationDetailPage() {
                 )}
               </div>
               <DialogFooter className="p-4 border-t gap-2 sm:justify-center">
-                <Button 
-                  variant={selectedDoc?.isLegible === true ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isLegible: true } })}
-                  disabled={!canEdit || isFinalized}
-                >
-                  Legível
-                </Button>
-                <Button 
-                  variant={selectedDoc?.isLegible === false ? "destructive" : "outline"} 
-                  size="sm"
-                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isLegible: false } })}
-                  disabled={!canEdit || isFinalized}
-                >
-                  Ilegível
-                </Button>
-                <Separator orientation="vertical" className="h-8 hidden sm:block" />
-                <Button 
-                  variant={selectedDoc?.isValid === true ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isValid: true } })}
-                  disabled={!canEdit || isFinalized}
-                >
-                  Válido
-                </Button>
-                <Button 
-                  variant={selectedDoc?.isValid === false ? "destructive" : "outline"} 
-                  size="sm"
-                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isValid: false } })}
-                  disabled={!canEdit || isFinalized}
-                >
-                  Inválido
-                </Button>
-                <Separator orientation="vertical" className="h-8 hidden sm:block" />
-                <Button 
-                  variant={selectedDoc?.isCompatible === true ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isCompatible: true } })}
-                  disabled={!canEdit || isFinalized}
-                >
-                  Compatível
-                </Button>
-                <Button 
-                  variant={selectedDoc?.isCompatible === false ? "destructive" : "outline"} 
-                  size="sm"
-                  onClick={() => updateDocumentMutation.mutate({ documentId: selectedDoc!.id, data: { isCompatible: false } })}
-                  disabled={!canEdit || isFinalized}
-                >
-                  Incompatível
-                </Button>
                 {canEdit && (
-                  <>
-                    <Separator orientation="vertical" className="h-8 hidden sm:block" />
-                    <Button 
-                      variant="secondary" 
-                      size="sm"
-                      onClick={() => verifyAuthenticityMutation.mutate(selectedDoc!.id)}
-                      disabled={verifyAuthenticityMutation.isPending}
-                      data-testid="button-verify-authenticity"
-                    >
-                      {verifyAuthenticityMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <ShieldCheck className="w-4 h-4 mr-2" />
-                      )}
-                      Verificar Autenticidade
-                    </Button>
-                  </>
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => verifyAuthenticityMutation.mutate(selectedDoc!.id)}
+                    disabled={verifyAuthenticityMutation.isPending}
+                    data-testid="button-verify-authenticity"
+                  >
+                    {verifyAuthenticityMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="w-4 h-4 mr-2" />
+                    )}
+                    Verificar Autenticidade
+                  </Button>
                 )}
               </DialogFooter>
             </DialogContent>
