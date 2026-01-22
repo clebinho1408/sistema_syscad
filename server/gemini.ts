@@ -14,6 +14,7 @@ function getAI(): GoogleGenAI {
 }
 
 export interface DocumentData {
+  tipoDocumento?: string;
   nome?: string;
   cpf?: string;
   rg?: string;
@@ -31,19 +32,27 @@ export interface DocumentData {
 export async function analyzeDocument(imageBase64: string, mimeType: string): Promise<DocumentData> {
   try {
     const systemPrompt = `Você é um especialista em análise de documentos brasileiros.
-Analise esta imagem de documento de identificação (RG, CNH, CNH Digital, Identidade ou similar) e extraia as seguintes informações:
+Analise esta imagem de documento de identificação (RG, CNH, CNH Digital, Passaporte, Identidade ou similar) e extraia as seguintes informações:
+- tipoDocumento: tipo do documento (RG, CNH, PASSAPORTE, IDENTIDADE_DIGITAL)
 - nome: nome completo da pessoa (nome civil)
 - cpf: número do CPF (apenas números, 11 dígitos)
-- rg: número do RG/Identidade (apenas números)
-- orgaoEmissor: órgão emissor do RG (ex: SSP, DETRAN, PC, etc.)
+- rg: número do RG/Identidade ou número do Passaporte
+- orgaoEmissor: órgão emissor do documento (ex: SSP, DETRAN, PC, DPF, SR/DPF, etc.)
 - ufEmissor: UF do órgão emissor (sigla de 2 letras)
 - dataNascimento: data de nascimento no formato YYYY-MM-DD
 - sexo: MASCULINO ou FEMININO
-- nomeMae: nome da mãe
+- nomeMae: nome da mãe (campo "Filiação" no passaporte)
 - nomePai: nome do pai
 - nacionalidade: nacionalidade (ex: BRASILEIRO)
 - naturalidade: cidade de nascimento
 - ufNascimento: UF de nascimento (sigla de 2 letras)
+
+IMPORTANTE sobre PASSAPORTE:
+- Se for passaporte, coloque tipoDocumento como "PASSAPORTE"
+- O número do passaporte tem formato: 2 letras + 6 números (ex: AA123456) - coloque no campo "rg" COMPLETO com as letras
+- O órgão emissor do passaporte geralmente é "SR/DPF" ou "DPF" seguido da UF
+- O nome no passaporte pode estar dividido em "Surname/Sobrenome" e "Given Names/Nome" - junte ambos para formar o nome completo
+- No passaporte, o CPF pode estar no campo "CPF / Personal Number"
 
 IMPORTANTE sobre CNH Digital:
 - Na CNH Digital, o nome civil está no campo "2 e 1 Nome e Sobrenome" ou similar - extraia esse valor para o campo "nome"
@@ -84,17 +93,28 @@ Todos os textos devem estar em MAIÚSCULAS, sem acentos.`;
 
     const data: DocumentData = JSON.parse(jsonMatch[0]);
     
-    // Pós-processamento do RG: remover letras e dígito verificador
+    // Verificar se é passaporte (número começa com 2 letras seguidas de números)
+    const isPassaporte = data.tipoDocumento === "PASSAPORTE" || 
+                         (data.rg && /^[A-Za-z]{2}\d+/.test(data.rg));
+    
+    // Pós-processamento do RG: remover letras e dígito verificador (exceto passaporte)
     if (data.rg) {
       let rg = data.rg;
       
-      // Remove o dígito verificador se houver (após traço ou letra no final)
-      // Exemplos: "12345678-9" -> "12345678", "12345678-X" -> "12345678", "12345678X" -> "12345678"
-      rg = rg.replace(/[-.]?\s*[A-Za-z]$/i, ""); // Remove letra no final
-      rg = rg.replace(/-\d$/, ""); // Remove dígito verificador após traço
-      
-      // Remove todas as letras e caracteres especiais, mantendo apenas números
-      rg = rg.replace(/\D/g, "");
+      if (isPassaporte) {
+        // Para passaporte: manter letras, apenas remover caracteres especiais
+        // Formato esperado: AA123456 (2 letras + 6 números)
+        rg = rg.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+      } else {
+        // Para outros documentos: remover letras e dígito verificador
+        // Remove o dígito verificador se houver (após traço ou letra no final)
+        // Exemplos: "12345678-9" -> "12345678", "12345678-X" -> "12345678", "12345678X" -> "12345678"
+        rg = rg.replace(/[-.]?\s*[A-Za-z]$/i, ""); // Remove letra no final
+        rg = rg.replace(/-\d$/, ""); // Remove dígito verificador após traço
+        
+        // Remove todas as letras e caracteres especiais, mantendo apenas números
+        rg = rg.replace(/\D/g, "");
+      }
       
       data.rg = rg;
     }
