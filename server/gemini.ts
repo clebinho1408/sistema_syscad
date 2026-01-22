@@ -310,7 +310,14 @@ REGRAS IMPORTANTES:
 
 Analise esta imagem de documento:
 
-1. **FONTES E TIPOGRAFIA:** (peso médio - detecta edições)
+PESOS DE IMPORTÂNCIA NA ANÁLISE:
+- Metadados do PDF: 59% (MAIS IMPORTANTE)
+- Consistência de Dados: 30%
+- Fontes: 5%
+- Alinhamento: 5%
+- Qualidade Imagem: 1%
+
+1. **FONTES E TIPOGRAFIA:** (peso 5%)
    - Procure por textos que FOGEM DO PADRÃO do restante do documento:
      * Fonte com FINURA diferente (mais fina ou mais grossa que as outras)
      * Fonte com LARGURA diferente (mais larga ou mais estreita)
@@ -320,11 +327,13 @@ Analise esta imagem de documento:
    - Se TODAS as fontes seguem o MESMO PADRÃO = OK
    - SUSPEITO: texto com características diferentes do padrão do documento
 
-2. **ALINHAMENTO:** (peso muito baixo - apenas 1% de impacto)
-   - Desalinhamento leve é NORMAL em scans
-   - Marque OK a menos que haja desalinhamento EXTREMO e óbvio
+2. **ALINHAMENTO:** (peso 5%)
+   - Verifique se as informações mudaram de posição/alinhamento
+   - Compare o alinhamento entre diferentes partes do documento
+   - Desalinhamento leve em scans é NORMAL
+   - SUSPEITO: texto claramente fora do alinhamento esperado
 
-3. **QUALIDADE DA IMAGEM - FUNDO:** (peso médio - detecta edições)
+3. **QUALIDADE DA IMAGEM - FUNDO:** (peso 1%)
    - Procure por MUDANÇAS DE FUNDO suspeitas:
      * Áreas com formato de QUADRADO/RETÂNGULO BRANCO atrás de texto
      * Diferenças sutis de cor/tom no fundo onde há texto editado
@@ -332,7 +341,7 @@ Analise esta imagem de documento:
    - Scan borrado uniforme = OK/NORMAL
    - SUSPEITO: área retangular clara/branca com texto diferente por cima
 
-4. **CONSISTÊNCIA DOS DADOS:** (PESO ALTO - ANÁLISE PRINCIPAL)
+4. **CONSISTÊNCIA DOS DADOS:** (peso 30%)
    
    FOQUE APENAS NESTES CAMPOS (IGNORE cálculos, impostos, valores monetários):
    
