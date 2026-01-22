@@ -87,6 +87,7 @@ Preferred communication style: Simple, everyday language.
 - `DATABASE_URL`: PostgreSQL connection string (required)
 - `SESSION_SECRET`: Session encryption key (optional, has default)
 - `DEFAULT_OBJECT_STORAGE_BUCKET_ID`: Replit Object Storage bucket ID (configured automatically)
+- `GEMINI_API_KEY`: Google Gemini API key for document OCR (optional, enables automatic form filling)
 
 ### Replit-Specific Integrations
 - `@replit/vite-plugin-runtime-error-modal`: Error overlay in development
@@ -107,3 +108,13 @@ Preferred communication style: Simple, everyday language.
   - One-time use tokens with 15-minute expiration
 - **Database Schema:** documents table has `fileKey` (object path) and `fileData` (nullable, legacy base64)
 - **Backward Compatibility:** Existing base64 documents continue to work during gradual migration
+
+### Document OCR Integration
+- **Purpose:** Automatically extract data from ID documents (RG, CNH) to pre-fill solicitation forms
+- **Service:** Google Gemini AI (gemini-2.5-flash model)
+- **Routes:**
+  - `GET /api/documents/ocr-status`: Check if OCR is available (returns {available: boolean})
+  - `POST /api/documents/analyze`: Analyze document image and extract data
+- **Extracted Fields:** nome, cpf, rg, dataNascimento, sexo, nomeMae, nomePai, nacionalidade, naturalidade, ufNascimento
+- **Frontend:** OCR upload component only appears when GEMINI_API_KEY is configured
+- **Location:** `server/gemini.ts` (Gemini integration), `client/src/pages/solicitations/new.tsx` (UI)
