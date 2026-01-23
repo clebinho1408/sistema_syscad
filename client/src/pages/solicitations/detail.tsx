@@ -1917,12 +1917,12 @@ export default function SolicitationDetailPage() {
                         Selecione os campos e anexos que deseja corrigir. O DETRAN analisará seu pedido.
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-5 py-4">
-                      <div className="space-y-3">
+                    <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto">
+                      <div className="space-y-2">
                         <h4 className="text-sm font-semibold">Campos Cadastrais</h4>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-1.5">
                           {fieldsList.map((field) => (
-                            <div key={field.id} className="flex items-center space-x-2 border rounded-md px-3 py-2">
+                            <div key={field.id} className="flex items-center space-x-2 border rounded-md px-2 py-1.5">
                               <Checkbox 
                                 id={`field-${field.id}`}
                                 checked={requestedFields.includes(field.id)}
@@ -1974,9 +1974,9 @@ export default function SolicitationDetailPage() {
                           ))}
                         </div>
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <h4 className="text-sm font-semibold">Anexos/Documentos</h4>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {docsList.map((doc) => {
                             const isOutros = doc.id === "outros";
                             const isRenach = doc.id === "renach_assinado";
@@ -1986,7 +1986,7 @@ export default function SolicitationDetailPage() {
                             const isDisabled = isAutoSelected || (isRenach && !hasExistingRenach);
                             
                             return (
-                              <div key={doc.id} className={`flex items-center space-x-2 border rounded-md px-3 py-2 ${isDisabled ? "opacity-80 bg-muted/30" : ""} ${isRenachSelectable ? "border-orange-300 bg-orange-50 dark:bg-orange-950/30" : ""}`}>
+                              <div key={doc.id} className={`flex items-center space-x-2 border rounded-md px-2 py-1.5 ${isDisabled ? "opacity-80 bg-muted/30" : ""} ${isRenachSelectable ? "border-orange-300 bg-orange-50 dark:bg-orange-950/30" : ""}`}>
                                 <Checkbox 
                                   id={`doc-${doc.id}`}
                                   checked={requestedDocs.includes(doc.id)}
@@ -2016,13 +2016,13 @@ export default function SolicitationDetailPage() {
                           })}
                         </div>
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <h4 className="text-sm font-semibold">Requerimento para Edição</h4>
                         <Textarea
                           placeholder="Descreva o motivo da solicitação de edição..."
                           value={editReason}
                           onChange={(e) => setEditReason(e.target.value)}
-                          rows={3}
+                          rows={2}
                           data-testid="textarea-edit-reason"
                         />
                       </div>
