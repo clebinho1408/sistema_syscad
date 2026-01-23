@@ -45,10 +45,12 @@ export default function SettingsPage() {
   const [typeFormData, setTypeFormData] = useState({ label: "", sortOrder: "0", isActive: true });
 
   // ============ USERS STATE ============
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isDeleteUserOpen, setIsDeleteUserOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithoutPassword | null>(null);
   const [userFormData, setUserFormData] = useState({ name: "", email: "", role: "operador" as "autoescola" | "operador" | "admin" });
+  const [newUserFormData, setNewUserFormData] = useState({ username: "", name: "", email: "", role: "operador" as "operador" | "admin" });
 
   // Document categories used in the system
   const documentCategories = [
@@ -187,6 +189,21 @@ export default function SettingsPage() {
     },
     onError: (error: any) => {
       toast({ title: "Erro ao excluir usuário", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: async (data: { username: string; name: string; email: string; role: "operador" | "admin" }) => {
+      return apiRequest("POST", "/api/users/create-staff", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Usuário criado com sucesso", description: "Senha padrão: 123456" });
+      setIsCreateUserOpen(false);
+      setNewUserFormData({ username: "", name: "", email: "", role: "operador" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro ao criar usuário", description: error.message, variant: "destructive" });
     },
   });
 
@@ -752,6 +769,10 @@ export default function SettingsPage() {
                   Visualize e gerencie os usuários do sistema
                 </p>
               </div>
+              <Button onClick={() => setIsCreateUserOpen(true)} data-testid="button-create-user">
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Operador/Admin
+              </Button>
             </div>
 
             <Card>
@@ -890,6 +911,79 @@ export default function SettingsPage() {
                   <Button onClick={handleUpdateUser} disabled={updateUserMutation.isPending} data-testid="button-confirm-edit-user">
                     {updateUserMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     Salvar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Create User Dialog */}
+            <Dialog open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo Operador/Admin</DialogTitle>
+                  <DialogDescription>
+                    Crie um novo usuário do tipo operador ou admin. A senha padrão será 123456.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-user-username">Usuário</Label>
+                    <Input
+                      id="new-user-username"
+                      value={newUserFormData.username}
+                      onChange={(e) => setNewUserFormData({ ...newUserFormData, username: e.target.value })}
+                      placeholder="nome.sobrenome"
+                      data-testid="input-new-user-username"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-user-name">Nome Completo</Label>
+                    <Input
+                      id="new-user-name"
+                      value={newUserFormData.name}
+                      onChange={(e) => setNewUserFormData({ ...newUserFormData, name: e.target.value })}
+                      placeholder="Nome Completo"
+                      data-testid="input-new-user-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-user-email">Email</Label>
+                    <Input
+                      id="new-user-email"
+                      type="email"
+                      value={newUserFormData.email}
+                      onChange={(e) => setNewUserFormData({ ...newUserFormData, email: e.target.value })}
+                      placeholder="email@exemplo.com"
+                      data-testid="input-new-user-email"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-user-role">Tipo de Usuário</Label>
+                    <Select
+                      value={newUserFormData.role}
+                      onValueChange={(value: "operador" | "admin") => setNewUserFormData({ ...newUserFormData, role: value })}
+                    >
+                      <SelectTrigger id="new-user-role" data-testid="select-new-user-role">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="operador">Operador</SelectItem>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCreateUserOpen(false)} data-testid="button-cancel-create-user">
+                    Cancelar
+                  </Button>
+                  <Button 
+                    onClick={() => createUserMutation.mutate(newUserFormData)} 
+                    disabled={createUserMutation.isPending || !newUserFormData.username || !newUserFormData.name || !newUserFormData.email}
+                    data-testid="button-confirm-create-user"
+                  >
+                    {createUserMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Criar Usuário
                   </Button>
                 </DialogFooter>
               </DialogContent>

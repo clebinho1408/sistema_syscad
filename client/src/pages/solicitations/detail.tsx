@@ -101,6 +101,7 @@ export default function SolicitationDetailPage() {
   const [isAccessRequestOpen, setIsAccessRequestOpen] = useState(false);
   const [requestedFields, setRequestedFields] = useState<string[]>([]);
   const [requestedDocs, setRequestedDocs] = useState<string[]>([]);
+  const [editReason, setEditReason] = useState("");
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [imageZoom, setImageZoom] = useState(100);
   const [copiedFields, setCopiedFields] = useState<Set<string>>(new Set());
@@ -456,7 +457,7 @@ export default function SolicitationDetailPage() {
   });
 
   const requestAccessMutation = useMutation({
-    mutationFn: async (data: { fields: string[]; documents: string[] }) => {
+    mutationFn: async (data: { fields: string[]; documents: string[]; editReason?: string }) => {
       return apiRequest("POST", `/api/solicitations/${params?.id}/request-access`, data);
     },
     onSuccess: () => {
@@ -464,6 +465,9 @@ export default function SolicitationDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "access-requests"] });
       toast({ title: "Pedido de acesso enviado!" });
       setIsAccessRequestOpen(false);
+      setEditReason("");
+      setRequestedFields([]);
+      setRequestedDocs([]);
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao enviar pedido", description: error.message, variant: "destructive" });
@@ -2012,11 +2016,21 @@ export default function SolicitationDetailPage() {
                           })}
                         </div>
                       </div>
+                      <div className="space-y-3">
+                        <h4 className="text-sm font-semibold">Requerimento para Edição</h4>
+                        <Textarea
+                          placeholder="Descreva o motivo da solicitação de edição..."
+                          value={editReason}
+                          onChange={(e) => setEditReason(e.target.value)}
+                          rows={3}
+                          data-testid="textarea-edit-reason"
+                        />
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsAccessRequestOpen(false)}>Cancelar</Button>
                       <Button 
-                        onClick={() => requestAccessMutation.mutate({ fields: requestedFields, documents: requestedDocs })}
+                        onClick={() => requestAccessMutation.mutate({ fields: requestedFields, documents: requestedDocs, editReason: editReason || undefined })}
                         disabled={requestAccessMutation.isPending || (requestedFields.length === 0 && requestedDocs.length === 0)}
                       >
                         Enviar Solicitação

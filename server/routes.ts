@@ -1297,13 +1297,14 @@ export async function registerRoutes(
 
   app.post("/api/solicitations/:id/request-access", requireAuth, requireRole("autoescola"), async (req, res) => {
     try {
-      const { fields, documents } = req.body;
+      const { fields, documents, editReason } = req.body;
       
       const accessRequest = await storage.createAccessRequest({
         solicitationId: req.params.id,
         requestedByUserId: req.user!.id,
         fields: fields || [],
         documents: documents || [],
+        editReason: editReason || null,
         status: "pending",
       });
 
@@ -1336,10 +1337,15 @@ export async function registerRoutes(
       const fieldLabels = (fields || []).map((f: string) => labels[f] || f);
       const docLabels = (documents || []).map((d: string) => labels[d] || d);
 
+      let chatMessage = `[PEDIDO DE ACESSO] A autoescola solicitou acesso para corrigir campos (${fieldLabels.join(", ")}) e anexos (${docLabels.join(", ")})`;
+      if (editReason) {
+        chatMessage += `\n\nRequerimento: ${editReason}`;
+      }
+
       await storage.createChatMessage({
         solicitationId: req.params.id,
         senderId: req.user!.id,
-        message: `[PEDIDO DE ACESSO] A autoescola solicitou acesso para corrigir campos (${fieldLabels.join(", ")}) e anexos (${docLabels.join(", ")})`,
+        message: chatMessage,
       });
 
       res.json(accessRequest);
@@ -1660,6 +1666,52 @@ export async function registerRoutes(
         entity: "user",
         entityId: user.id,
         details: `Usuário criado: ${username} (${role})`,
+      });
+
+      const { password: _, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Create staff user (operator or admin) with default password
+  app.post("/api/users/create-staff", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const { username, name, email, role } = req.body;
+
+      // Validate role is operador or admin
+      if (role !== "operador" && role !== "admin") {
+        return res.status(400).json({ message: "Tipo de usuário inválido. Use 'operador' ou 'admin'." });
+      }
+
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Usuário já existe com este login" });
+      }
+
+      const existingUserByName = await storage.getUserByName(name);
+      if (existingUserByName) {
+        return res.status(400).json({ message: "Já existe um usuário com este nome" });
+      }
+
+      // Use default password "123456"
+      const hashedPassword = await hashPassword("123456");
+      const user = await storage.createUser({
+        username,
+        password: hashedPassword,
+        name,
+        email,
+        role,
+        isActive: true,
+      });
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "create",
+        entity: "user",
+        entityId: user.id,
+        details: `Usuário ${role} criado: ${username} (${name})`,
       });
 
       const { password: _, ...userWithoutPassword } = user;

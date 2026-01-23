@@ -140,6 +140,7 @@ export const accessRequests = pgTable("access_requests", {
   requestedByUserId: varchar("requested_by_user_id").notNull().references(() => users.id),
   fields: text("fields").array(),
   documents: text("documents").array(),
+  editReason: text("edit_reason"),
   status: accessRequestStatusEnum("status").notNull().default("pending"),
   rejectionReason: text("rejection_reason"),
   decidedByUserId: varchar("decided_by_user_id").references(() => users.id),
