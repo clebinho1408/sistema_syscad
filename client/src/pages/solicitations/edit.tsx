@@ -219,8 +219,8 @@ export default function SolicitationEditPage() {
     if (!selectedFile) return;
 
     const isPDF = selectedFile.type === 'application/pdf';
-    const maxSize = isPDF ? 3 * 1024 * 1024 : 5 * 1024 * 1024;
-    const maxSizeLabel = isPDF ? '3MB' : '5MB';
+    const maxSize = isPDF ? 3 * 1024 * 1024 : 1 * 1024 * 1024;
+    const maxSizeLabel = isPDF ? '3MB' : '1MB';
     
     if (selectedFile.size > maxSize) {
       toast({
@@ -659,7 +659,7 @@ export default function SolicitationEditPage() {
                           >
                             Clique para fazer upload
                           </label>
-                          <p className="text-xs text-muted-foreground mt-1">PDF (máx. 3MB), JPG ou PNG (máx. 5MB)</p>
+                          <p className="text-xs text-muted-foreground mt-1">PDF (máx. 3MB), JPG ou PNG (máx. 1MB)</p>
                         </div>
                       )}
                     </div>

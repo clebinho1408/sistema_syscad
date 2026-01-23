@@ -10,6 +10,26 @@ import { WebSocketServer, WebSocket } from "ws";
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
 import { analyzeDocument, analyzeDocumentAuthenticity, analyzeDocumentVisualQuality, extractPdfMetadata, isGeminiConfigured, PdfMetadata } from "./gemini";
 import { z } from "zod";
+import { compressDocument } from "./compression";
+
+const MAX_PDF_SIZE = 3 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 1 * 1024 * 1024;
+
+function validateDocumentSize(doc: { data: string; type: string; name: string }): { valid: boolean; error?: string } {
+  const base64Content = doc.data.replace(/^data:[^;]+;base64,/, '');
+  const size = Buffer.from(base64Content, 'base64').length;
+  const isPDF = doc.type === 'application/pdf';
+  const maxSize = isPDF ? MAX_PDF_SIZE : MAX_IMAGE_SIZE;
+  const maxSizeLabel = isPDF ? '3MB' : '1MB';
+  
+  if (size > maxSize) {
+    return { 
+      valid: false, 
+      error: `Arquivo "${doc.name}" excede o limite de ${maxSizeLabel}` 
+    };
+  }
+  return { valid: true };
+}
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Senha atual é obrigatória"),
@@ -497,6 +517,10 @@ export async function registerRoutes(
 
       if (documentsList && Array.isArray(documentsList)) {
         for (const doc of documentsList) {
+          const validation = validateDocumentSize(doc);
+          if (!validation.valid) {
+            return res.status(400).json({ message: validation.error });
+          }
           await storage.createDocument({
             solicitationId: solicitation.id,
             fileName: doc.name,
@@ -637,6 +661,42 @@ export async function registerRoutes(
         details: `Status do requerimento alterado para: ${status}`,
       });
 
+      if (status === "cadastro_finalizado") {
+        const documents = await storage.getDocuments(req.params.id);
+        let totalSaved = 0;
+        
+        for (const doc of documents) {
+          if (doc.fileData) {
+            try {
+              const originalSize = Buffer.from(doc.fileData.replace(/^data:[^;]+;base64,/, ''), 'base64').length;
+              const result = await compressDocument(doc.fileData, doc.fileType);
+              
+              if (result.wasCompressed && result.newSize < originalSize) {
+                await storage.updateDocument(doc.id, {
+                  fileData: result.compressedData,
+                  fileSize: result.newSize.toString(),
+                  fileType: result.newFileType,
+                });
+                totalSaved += (originalSize - result.newSize);
+                console.log(`Document ${doc.id} compressed: ${Math.round(originalSize/1024)}KB -> ${Math.round(result.newSize/1024)}KB`);
+              }
+            } catch (compressError) {
+              console.error(`Error compressing document ${doc.id}:`, compressError);
+            }
+          }
+        }
+        
+        if (totalSaved > 0) {
+          await storage.createAuditLog({
+            userId: req.user!.id,
+            action: "documents_compressed",
+            entity: "solicitation",
+            entityId: req.params.id,
+            details: `Documentos comprimidos. Economia: ${Math.round(totalSaved / 1024)}KB`,
+          });
+        }
+      }
+
       res.json(updated);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -658,6 +718,10 @@ export async function registerRoutes(
       // Handle documents if any - replace old documents with new ones for each category
       if (documentsList && Array.isArray(documentsList)) {
         for (const doc of documentsList) {
+          const validation = validateDocumentSize(doc);
+          if (!validation.valid) {
+            return res.status(400).json({ message: validation.error });
+          }
           // Delete old documents in the same category
           if (doc.category) {
             await storage.deleteDocumentsByCategory(solicitation.id, doc.category);

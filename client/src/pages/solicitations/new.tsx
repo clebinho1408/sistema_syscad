@@ -507,8 +507,8 @@ export default function NewSolicitationPage() {
     if (!selectedFile) return;
 
     const isPDF = selectedFile.type === 'application/pdf';
-    const maxSize = isPDF ? 3 * 1024 * 1024 : 5 * 1024 * 1024;
-    const maxSizeLabel = isPDF ? '3MB' : '5MB';
+    const maxSize = isPDF ? 3 * 1024 * 1024 : 1 * 1024 * 1024;
+    const maxSizeLabel = isPDF ? '3MB' : '1MB';
     
     if (selectedFile.size > maxSize) {
       toast({
@@ -1265,7 +1265,7 @@ export default function NewSolicitationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Documentação</CardTitle>
-              <CardDescription>Anexe os documentos necessários digitalizados (PDF máx. 3MB, imagens máx. 5MB)</CardDescription>
+              <CardDescription>Anexe os documentos necessários digitalizados (PDF máx. 3MB, imagens máx. 1MB)</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               {DOCUMENT_CATEGORIES.map((category) => (

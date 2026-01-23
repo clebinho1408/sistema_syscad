@@ -1372,7 +1372,7 @@ export default function SolicitationDetailPage() {
                     <label className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors">
                       <Upload className="w-8 h-8 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">Clique para selecionar o arquivo</span>
-                      <span className="text-xs text-muted-foreground">PDF (máx. 3MB), JPG, PNG (máx. 5MB)</span>
+                      <span className="text-xs text-muted-foreground">PDF (máx. 3MB), JPG, PNG (máx. 1MB)</span>
                       <input
                         type="file"
                         className="hidden"
@@ -1381,8 +1381,8 @@ export default function SolicitationDetailPage() {
                           const file = e.target.files?.[0];
                           if (!file) return;
                           const isPDF = file.type === 'application/pdf';
-                          const maxSize = isPDF ? 3 * 1024 * 1024 : 5 * 1024 * 1024;
-                          const maxSizeLabel = isPDF ? '3MB' : '5MB';
+                          const maxSize = isPDF ? 3 * 1024 * 1024 : 1 * 1024 * 1024;
+                          const maxSizeLabel = isPDF ? '3MB' : '1MB';
                           if (file.size > maxSize) {
                             toast({
                               title: "Arquivo muito grande",
