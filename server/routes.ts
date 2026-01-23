@@ -724,6 +724,87 @@ export async function registerRoutes(
     }
   });
 
+  // Upload Renach Assinado - only allowed when status is "cadastro_finalizado"
+  app.post("/api/solicitations/:id/upload-renach", requireAuth, requireRole("autoescola"), async (req, res) => {
+    try {
+      const solicitation = await storage.getSolicitation(req.params.id);
+      if (!solicitation) {
+        return res.status(404).json({ error: "Requerimento não encontrado" });
+      }
+
+      // Verify the autoescola owns this solicitation
+      const school = await storage.getDrivingSchoolByUserId(req.user!.id);
+      if (!school || solicitation.drivingSchoolId !== school.id) {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
+
+      // Only allow upload when status is "cadastro_finalizado"
+      if (solicitation.status !== "cadastro_finalizado") {
+        return res.status(400).json({ 
+          error: "O Renach Assinado só pode ser anexado quando o status for 'Cadastro Finalizado'" 
+        });
+      }
+
+      const { fileName, fileType, fileData } = req.body;
+      if (!fileName || !fileData) {
+        return res.status(400).json({ error: "Nome do arquivo e dados são obrigatórios" });
+      }
+
+      // Validate file type
+      const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+      if (fileType && !allowedTypes.includes(fileType.toLowerCase())) {
+        return res.status(400).json({ 
+          error: "Tipo de arquivo não permitido. Apenas PDF, JPG e PNG são aceitos." 
+        });
+      }
+
+      // Validate file size (max 5MB - base64 is ~33% larger than binary)
+      const maxBase64Size = 5 * 1024 * 1024 * 1.4; // ~7MB for 5MB file in base64
+      if (fileData.length > maxBase64Size) {
+        return res.status(400).json({ 
+          error: "Arquivo muito grande. O tamanho máximo é 5MB." 
+        });
+      }
+
+      // Delete any existing renach_assinado documents for this solicitation
+      await storage.deleteDocumentsByCategory(req.params.id, "renach_assinado");
+
+      // Create the new document
+      const document = await storage.createDocument({
+        solicitationId: req.params.id,
+        fileName,
+        fileType: fileType || "application/octet-stream",
+        fileData,
+        fileKey: null,
+        fileSize: null,
+        category: "renach_assinado",
+        isLegible: null,
+        isValid: null,
+        isCompatible: null,
+      });
+
+      // Add system message to chat
+      await storage.createChatMessage({
+        solicitationId: req.params.id,
+        senderId: req.user!.id,
+        message: `[SISTEMA] Renach Assinado anexado pela autoescola.`,
+      });
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "upload",
+        entity: "document",
+        entityId: document.id,
+        details: `Renach Assinado anexado ao requerimento`,
+      });
+
+      res.status(201).json(document);
+    } catch (error: any) {
+      console.error("Error uploading renach:", error);
+      res.status(500).json({ error: error.message || "Falha ao anexar Renach Assinado" });
+    }
+  });
+
   // Verify document authenticity (operador/admin only)
   app.post("/api/documents/:id/verify-authenticity", requireAuth, requireRole("operador", "admin"), async (req, res) => {
     try {

@@ -110,6 +110,8 @@ export default function SolicitationDetailPage() {
   const [verificationCooldown, setVerificationCooldown] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<{ id: string; name: string; role: string }[]>([]);
   const [typingUsers, setTypingUsers] = useState<{ id: string; name: string }[]>([]);
+  const [renachFile, setRenachFile] = useState<{ name: string; data: string; type: string } | null>(null);
+  const [isUploadingRenach, setIsUploadingRenach] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -376,6 +378,23 @@ export default function SolicitationDetailPage() {
       // Ativa cooldown mesmo em caso de erro (para evitar spam)
       setVerificationCooldown(true);
       setTimeout(() => setVerificationCooldown(false), 15000);
+    },
+  });
+
+  const uploadRenachMutation = useMutation({
+    mutationFn: async (data: { fileName: string; fileType: string; fileData: string }) => {
+      return apiRequest("POST", `/api/solicitations/${params?.id}/upload-renach`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id, "messages"] });
+      toast({ title: "Renach Assinado anexado com sucesso!" });
+      setRenachFile(null);
+      setIsUploadingRenach(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao anexar", description: error.message, variant: "destructive" });
+      setIsUploadingRenach(false);
     },
   });
 
@@ -1099,6 +1118,110 @@ export default function SolicitationDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {isAutoescola && solicitation.status === "cadastro_finalizado" && (
+            <Card className="border-primary/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-primary">
+                  <Upload className="w-5 h-5" />
+                  Anexar Renach Assinado
+                </CardTitle>
+                <CardDescription>
+                  {documents?.some(d => d.category === "renach_assinado") 
+                    ? "Você já anexou um Renach Assinado. Você pode substituí-lo anexando um novo arquivo."
+                    : "O cadastro foi finalizado. Agora você pode anexar o Renach Assinado."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {renachFile ? (
+                  <div className="flex items-center gap-4 p-3 border rounded-lg bg-muted/50">
+                    <FileText className="w-8 h-8 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{renachFile.name}</p>
+                      <p className="text-sm text-muted-foreground">{renachFile.type}</p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setRenachFile(null)}
+                      data-testid="button-remove-renach"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Clique para selecionar o arquivo</span>
+                    <span className="text-xs text-muted-foreground">PDF, JPG, PNG (máx. 5MB)</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast({
+                            title: "Arquivo muito grande",
+                            description: "O arquivo deve ter no máximo 5MB",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setRenachFile({
+                            name: file.name,
+                            data: reader.result as string,
+                            type: file.type,
+                          });
+                        };
+                        reader.readAsDataURL(file);
+                        e.target.value = "";
+                      }}
+                      data-testid="input-renach-file"
+                    />
+                  </label>
+                )}
+              </CardContent>
+              <CardFooter>
+                <Button
+                  onClick={() => {
+                    if (!renachFile) {
+                      toast({
+                        title: "Selecione um arquivo",
+                        description: "Por favor, selecione o arquivo do Renach Assinado",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setIsUploadingRenach(true);
+                    uploadRenachMutation.mutate({
+                      fileName: renachFile.name,
+                      fileType: renachFile.type,
+                      fileData: renachFile.data,
+                    });
+                  }}
+                  disabled={!renachFile || isUploadingRenach}
+                  className="w-full"
+                  data-testid="button-upload-renach"
+                >
+                  {isUploadingRenach ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Enviar Renach Assinado
+                    </>
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
 
           <Dialog open={!!selectedDoc} onOpenChange={(open) => !open && setSelectedDoc(null)}>
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">

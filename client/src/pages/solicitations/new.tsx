@@ -191,7 +191,6 @@ interface FileUpload {
 }
 
 const DOCUMENT_CATEGORIES = [
-  { id: "renach_assinado", label: "Renach Assinado", required: true },
   { id: "documento_identificacao", label: "Documento de Identificação", required: true },
   { id: "comprovante_residencia", label: "Comprovante de Residência", required: true },
   { id: "outros", label: "Outros Documentos/Declarações", required: false },
@@ -202,7 +201,6 @@ export default function NewSolicitationPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [files, setFiles] = useState<Record<string, FileUpload | null>>({
-    renach_assinado: null,
     documento_identificacao: null,
     comprovante_residencia: null,
     outros: null,
