@@ -8,7 +8,7 @@ import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
 import passport from "passport";
 import { WebSocketServer, WebSocket } from "ws";
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
-import { analyzeDocument, analyzeDocumentAuthenticity, extractPdfMetadata, isGeminiConfigured, PdfMetadata } from "./gemini";
+import { analyzeDocument, analyzeDocumentAuthenticity, analyzeDocumentVisualQuality, extractPdfMetadata, isGeminiConfigured, PdfMetadata } from "./gemini";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -923,6 +923,85 @@ export async function registerRoutes(
       res.json(result);
     } catch (error: any) {
       console.error("Error verifying document authenticity:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Analyze document visual quality (automatic for ID documents)
+  app.post("/api/documents/:id/analyze-visual-quality", requireAuth, async (req, res) => {
+    try {
+      if (!isGeminiConfigured()) {
+        return res.status(503).json({ 
+          error: "Análise visual não configurada",
+          message: "A chave GEMINI_API_KEY não está configurada no sistema"
+        });
+      }
+
+      const document = await storage.getDocumentById(req.params.id);
+      if (!document) {
+        return res.status(404).json({ error: "Documento não encontrado" });
+      }
+
+      // Authorization check: only operador and admin can trigger visual analysis
+      const user = req.user!;
+      if (user.role !== "admin" && user.role !== "operador") {
+        return res.status(403).json({ error: "Apenas operadores e administradores podem realizar análise visual" });
+      }
+      
+      const solicitation = await storage.getSolicitation(document.solicitationId);
+      if (!solicitation) {
+        return res.status(404).json({ error: "Solicitação não encontrada" });
+      }
+
+      // Only analyze "documento_identificacao" category
+      if (document.category !== "documento_identificacao") {
+        return res.status(400).json({ 
+          error: "Análise visual automática disponível apenas para Documento de Identificação" 
+        });
+      }
+
+      let imageBase64: string | null = null;
+      let mimeType = document.fileType || "image/jpeg";
+
+      // Get document content from object storage or base64
+      if (document.fileKey) {
+        try {
+          const objectFile = await objectStorageService.getObjectEntityFile(document.fileKey);
+          const chunks: Buffer[] = [];
+          for await (const chunk of objectFile.createReadStream()) {
+            chunks.push(Buffer.from(chunk));
+          }
+          imageBase64 = Buffer.concat(chunks).toString("base64");
+        } catch (error) {
+          console.error("Error fetching from object storage:", error);
+          return res.status(404).json({ error: "Arquivo não encontrado no armazenamento" });
+        }
+      } else if (document.fileData) {
+        imageBase64 = document.fileData.split(",")[1] || document.fileData;
+      }
+
+      if (!imageBase64) {
+        return res.status(404).json({ error: "Conteúdo do documento não disponível" });
+      }
+
+      const result = await analyzeDocumentVisualQuality(imageBase64, mimeType);
+      
+      // Log the visual quality analysis
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "analyze_visual_quality",
+        entity: "document",
+        entityId: req.params.id,
+        details: JSON.stringify({ 
+          avaliacaoGeral: result.avaliacaoGeral, 
+          conservacao: result.conservacao.status,
+          nitidez: result.nitidez.status
+        }),
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error analyzing document visual quality:", error);
       res.status(500).json({ error: error.message });
     }
   });

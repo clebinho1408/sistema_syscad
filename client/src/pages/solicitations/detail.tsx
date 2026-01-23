@@ -40,6 +40,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   ShieldX,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -108,6 +109,9 @@ export default function SolicitationDetailPage() {
   const [isAuthenticityModalOpen, setIsAuthenticityModalOpen] = useState(false);
   const [authenticityResult, setAuthenticityResult] = useState<any>(null);
   const [verificationCooldown, setVerificationCooldown] = useState(false);
+  const [visualQualityResult, setVisualQualityResult] = useState<any>(null);
+  const [isAnalyzingVisualQuality, setIsAnalyzingVisualQuality] = useState(false);
+  const [visualQualityAnalyzedDocs, setVisualQualityAnalyzedDocs] = useState<Set<string>>(new Set());
   const [onlineUsers, setOnlineUsers] = useState<{ id: string; name: string; role: string }[]>([]);
   const [typingUsers, setTypingUsers] = useState<{ id: string; name: string }[]>([]);
   const [renachFile, setRenachFile] = useState<{ name: string; data: string; type: string } | null>(null);
@@ -129,6 +133,22 @@ export default function SolicitationDetailPage() {
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
+
+  // Automatic visual quality analysis for ID documents (only for operador/admin)
+  const canAnalyzeVisualQuality = user?.role === "operador" || user?.role === "admin";
+  
+  useEffect(() => {
+    if (canAnalyzeVisualQuality &&
+        selectedDoc && 
+        selectedDoc.category === "documento_identificacao" && 
+        !visualQualityAnalyzedDocs.has(selectedDoc.id) &&
+        !analyzeVisualQualityMutation.isPending) {
+      setVisualQualityResult(null);
+      analyzeVisualQualityMutation.mutate(selectedDoc.id);
+    } else if (selectedDoc && selectedDoc.category !== "documento_identificacao") {
+      setVisualQualityResult(null);
+    }
+  }, [selectedDoc, canAnalyzeVisualQuality]);
 
   useEffect(() => {
     const unlockAudio = () => {
@@ -378,6 +398,26 @@ export default function SolicitationDetailPage() {
       // Ativa cooldown mesmo em caso de erro (para evitar spam)
       setVerificationCooldown(true);
       setTimeout(() => setVerificationCooldown(false), 15000);
+    },
+  });
+
+  const analyzeVisualQualityMutation = useMutation({
+    mutationFn: async (documentId: string) => {
+      const response = await apiRequest("POST", `/api/documents/${documentId}/analyze-visual-quality`);
+      return response.json();
+    },
+    onSuccess: (data, documentId) => {
+      setVisualQualityResult(data);
+      setVisualQualityAnalyzedDocs(prev => new Set(prev).add(documentId));
+    },
+    onError: (error: any) => {
+      console.error("Erro na análise visual:", error.message);
+      setVisualQualityResult({ error: true, mensagem: error.message || "Falha na análise visual" });
+      toast({
+        title: "Análise visual indisponível",
+        description: error.message || "Não foi possível analisar o documento. Tente novamente mais tarde.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -1276,8 +1316,86 @@ export default function SolicitationDetailPage() {
                   </div>
                 )}
               </div>
+              {/* Visual Quality Analysis Results for ID Documents */}
+              {selectedDoc?.category === "documento_identificacao" && canAnalyzeVisualQuality && (
+                <div className="p-4 border-t bg-muted/20">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Eye className="w-4 h-4" />
+                    <span className="font-medium text-sm">Análise Visual Automática</span>
+                  </div>
+                  
+                  {analyzeVisualQualityMutation.isPending ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Analisando qualidade do documento...</span>
+                    </div>
+                  ) : visualQualityResult ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        {visualQualityResult.avaliacaoGeral === "APROVADO" && (
+                          <Badge className="bg-green-500 no-default-hover-elevate no-default-active-elevate">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Aprovado
+                          </Badge>
+                        )}
+                        {visualQualityResult.avaliacaoGeral === "REQUER_ATENCAO" && (
+                          <Badge className="bg-yellow-500 no-default-hover-elevate no-default-active-elevate">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            Requer Atenção
+                          </Badge>
+                        )}
+                        {visualQualityResult.avaliacaoGeral === "REPROVADO" && (
+                          <Badge variant="destructive" className="no-default-hover-elevate no-default-active-elevate">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Reprovado
+                          </Badge>
+                        )}
+                        <span className="text-sm text-muted-foreground">{visualQualityResult.mensagem}</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${
+                            visualQualityResult.conservacao?.status === "BOM" ? "bg-green-500" :
+                            visualQualityResult.conservacao?.status === "REGULAR" ? "bg-yellow-500" : "bg-red-500"
+                          }`} />
+                          <span>Conservação: {visualQualityResult.conservacao?.status || "N/A"}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${
+                            visualQualityResult.rasuras?.detectado ? "bg-red-500" : "bg-green-500"
+                          }`} />
+                          <span>Rasuras: {visualQualityResult.rasuras?.detectado ? "Detectadas" : "Não detectadas"}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${
+                            visualQualityResult.cortes?.detectado ? "bg-red-500" : "bg-green-500"
+                          }`} />
+                          <span>Cortes: {visualQualityResult.cortes?.detectado ? "Informação cortada" : "Completo"}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${
+                            visualQualityResult.nitidez?.status === "NITIDO" ? "bg-green-500" :
+                            visualQualityResult.nitidez?.status === "PARCIALMENTE_NITIDO" ? "bg-yellow-500" : "bg-red-500"
+                          }`} />
+                          <span>Nitidez: {visualQualityResult.nitidez?.status || "N/A"}</span>
+                        </div>
+                      </div>
+                      
+                      {visualQualityResult.recomendacao && (
+                        <p className="text-xs text-muted-foreground border-t pt-2">
+                          <strong>Recomendação:</strong> {visualQualityResult.recomendacao}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Análise não disponível</p>
+                  )}
+                </div>
+              )}
+              
               <DialogFooter className="p-4 border-t gap-2 sm:justify-center">
-                {canEdit && (
+                {canEdit && selectedDoc?.category === "comprovante_residencia" && (
                   <Button 
                     variant="secondary" 
                     size="sm"

@@ -214,6 +214,132 @@ export interface AuthenticityAnalysis {
   metadatasPdf?: PdfMetadata;
 }
 
+export interface VisualQualityAnalysis {
+  conservacao: {
+    status: "BOM" | "REGULAR" | "RUIM";
+    descricao: string;
+    problemas: string[];
+  };
+  rasuras: {
+    detectado: boolean;
+    descricao: string;
+    areas: string[];
+  };
+  cortes: {
+    detectado: boolean;
+    descricao: string;
+    informacoesCortadas: string[];
+  };
+  nitidez: {
+    status: "NITIDO" | "PARCIALMENTE_NITIDO" | "ILEGIVEL";
+    descricao: string;
+    camposIlegiveis: string[];
+  };
+  avaliacaoGeral: "APROVADO" | "REQUER_ATENCAO" | "REPROVADO";
+  mensagem: string;
+  recomendacao: string;
+}
+
+export async function analyzeDocumentVisualQuality(
+  imageBase64: string,
+  mimeType: string
+): Promise<VisualQualityAnalysis> {
+  try {
+    const systemPrompt = `Você é um especialista em análise visual de documentos de identificação brasileiros (RG, CNH, CNH Digital, Passaporte).
+
+ANALISE A IMAGEM DO DOCUMENTO NOS SEGUINTES ASPECTOS:
+
+1. **CONSERVAÇÃO DO DOCUMENTO:**
+   - Estado físico do documento (dobras, rasgos, manchas, desgaste)
+   - Sinais de deterioração ou dano
+   - Avalie se o documento está em condições aceitáveis de uso
+
+2. **RASURAS OU ALTERAÇÕES:**
+   - Procure por sinais de rasuras, apagamentos ou correções manuais
+   - Identifique áreas que parecem ter sido alteradas
+   - Verifique se há sobreposição de informações
+
+3. **INFORMAÇÕES CORTADAS:**
+   - Verifique se TODAS as informações do documento estão visíveis na imagem
+   - Identifique se alguma borda do documento foi cortada na foto
+   - Verifique se campos importantes estão fora do enquadramento
+
+4. **NITIDEZ E LEGIBILIDADE:**
+   - Avalie se os dados estão nítidos e legíveis
+   - Verifique se a foto está focada
+   - Identifique campos específicos que estão ilegíveis ou difíceis de ler
+
+Responda APENAS com JSON válido no seguinte formato:
+{
+  "conservacao": {
+    "status": "BOM" | "REGULAR" | "RUIM",
+    "descricao": "descrição do estado de conservação",
+    "problemas": ["lista de problemas encontrados, ou vazia se nenhum"]
+  },
+  "rasuras": {
+    "detectado": true | false,
+    "descricao": "descrição sobre rasuras encontradas ou não",
+    "areas": ["lista de áreas com possíveis rasuras, ou vazia se nenhuma"]
+  },
+  "cortes": {
+    "detectado": true | false,
+    "descricao": "descrição sobre informações cortadas ou não",
+    "informacoesCortadas": ["lista de informações que estão cortadas, ou vazia se nenhuma"]
+  },
+  "nitidez": {
+    "status": "NITIDO" | "PARCIALMENTE_NITIDO" | "ILEGIVEL",
+    "descricao": "descrição sobre a nitidez do documento",
+    "camposIlegiveis": ["lista de campos que estão ilegíveis ou difíceis de ler, ou vazia se nenhum"]
+  },
+  "avaliacaoGeral": "APROVADO" | "REQUER_ATENCAO" | "REPROVADO",
+  "mensagem": "mensagem resumida sobre a análise visual",
+  "recomendacao": "recomendação sobre o que fazer (ex: aceitar documento, solicitar nova foto, solicitar novo documento)"
+}
+
+CRITÉRIOS DE AVALIAÇÃO:
+- APROVADO: Documento em bom estado, sem rasuras, completo e legível
+- REQUER_ATENCAO: Documento com pequenos problemas que não impedem a análise, mas merecem atenção
+- REPROVADO: Documento com problemas graves que impedem a análise adequada (ilegível, cortado, rasurado)
+
+Seja objetivo e prático. Se o documento está em condições normais de uso, aprove-o.`;
+
+    const contents = [
+      {
+        inlineData: {
+          data: imageBase64,
+          mimeType: mimeType,
+        },
+      },
+      systemPrompt,
+    ];
+
+    const response = await getAI().models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: contents,
+    });
+
+    const rawText = response.text || "{}";
+    
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.log("No JSON found in visual quality response:", rawText);
+      throw new Error("Não foi possível analisar a qualidade visual do documento");
+    }
+
+    const data: VisualQualityAnalysis = JSON.parse(jsonMatch[0]);
+    return data;
+  } catch (error: any) {
+    console.error("Failed to analyze document visual quality:", error);
+    
+    const errorStr = String(error);
+    if (errorStr.includes("RESOURCE_EXHAUSTED") || errorStr.includes("rate-limit") || errorStr.includes("quota")) {
+      throw new Error("Limite de uso da API atingido. Aguarde alguns segundos e tente novamente.");
+    }
+    
+    throw new Error("Falha ao analisar qualidade visual do documento. Tente novamente em alguns instantes.");
+  }
+}
+
 export async function analyzeDocumentAuthenticity(
   imageBase64: string, 
   mimeType: string,
