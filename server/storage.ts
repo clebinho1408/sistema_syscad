@@ -45,7 +45,7 @@ export interface IStorage {
   getChatMessages(solicitationId: string): Promise<ChatMessageWithSender[]>;
   createChatMessage(data: InsertChatMessage): Promise<ChatMessage>;
 
-  getUnreadCounts(userId: string): Promise<{ solicitationId: string; unreadCount: number }[]>;
+  getUnreadCounts(userId: string): Promise<{ solicitationId: string; solicitationType: string; conductorName: string; unreadCount: number }[]>;
   markMessagesAsRead(solicitationId: string, userId: string): Promise<void>;
 
   createAuditLog(data: InsertAuditLog): Promise<AuditLog>;
@@ -285,21 +285,27 @@ export class DatabaseStorage implements IStorage {
     return message;
   }
 
-  async getUnreadCounts(userId: string): Promise<{ solicitationId: string; unreadCount: number }[]> {
+  async getUnreadCounts(userId: string): Promise<{ solicitationId: string; solicitationType: string; conductorName: string; unreadCount: number }[]> {
     const result = await db.execute(sql`
       SELECT 
         cm.solicitation_id as "solicitationId",
+        s.type as "solicitationType",
+        c.nome as "conductorName",
         COUNT(*) as "unreadCount"
       FROM chat_messages cm
       LEFT JOIN chat_read_status crs 
         ON crs.solicitation_id = cm.solicitation_id 
         AND crs.user_id = ${userId}
+      JOIN solicitations s ON s.id = cm.solicitation_id
+      JOIN conductors c ON c.id = s.conductor_id
       WHERE cm.sender_id != ${userId}
         AND (crs.last_read_at IS NULL OR cm.created_at > crs.last_read_at)
-      GROUP BY cm.solicitation_id
+      GROUP BY cm.solicitation_id, s.type, c.nome
     `);
     return result.rows.map((r: any) => ({
       solicitationId: r.solicitationId,
+      solicitationType: r.solicitationType,
+      conductorName: r.conductorName,
       unreadCount: parseInt(r.unreadCount, 10),
     }));
   }

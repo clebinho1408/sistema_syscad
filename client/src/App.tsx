@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NotificationBell } from "@/components/notification-bell";
 
 import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
@@ -80,7 +81,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarInset className="flex flex-col flex-1">
           <header className="flex items-center justify-between gap-2 p-3 border-b bg-background/95 backdrop-blur sticky top-0 z-10">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
+            <div className="flex items-center gap-1">
+              <NotificationBell />
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1 overflow-auto p-6">
             {children}
