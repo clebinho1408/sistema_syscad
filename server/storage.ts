@@ -290,7 +290,7 @@ export class DatabaseStorage implements IStorage {
       SELECT 
         cm.solicitation_id as "solicitationId",
         s.type as "solicitationType",
-        c.nome as "conductorName",
+        c.nome_completo as "conductorName",
         COUNT(*) as "unreadCount"
       FROM chat_messages cm
       LEFT JOIN chat_read_status crs 
@@ -300,7 +300,7 @@ export class DatabaseStorage implements IStorage {
       JOIN conductors c ON c.id = s.conductor_id
       WHERE cm.sender_id != ${userId}
         AND (crs.last_read_at IS NULL OR cm.created_at > crs.last_read_at)
-      GROUP BY cm.solicitation_id, s.type, c.nome
+      GROUP BY cm.solicitation_id, s.type, c.nome_completo
     `);
     return result.rows.map((r: any) => ({
       solicitationId: r.solicitationId,
