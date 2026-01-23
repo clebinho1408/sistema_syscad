@@ -66,7 +66,16 @@ Preferred communication style: Simple, everyday language.
 - Create, edit (name, phone, address), delete, and block/unblock driving schools
 - Delete solicitations with confirmation
 - Transfer candidates between driving schools
+- Reset any user's password to default (key icon in users table)
 - Access to all statistics and reports
+
+### Password Management
+- **Default Password:** New driving school users are created with default password "123456"
+- **Password Change:** All logged-in users can change their password via sidebar dropdown menu → "Alterar Senha"
+- **Admin Reset:** Admins can reset any user's password to default "123456" via Settings → Usuários tab (key icon)
+- **Security:** All passwords hashed with bcrypt, minimum 6 characters required for new passwords
+- **Validation:** Zod schemas validate password change and registration requests server-side
+- **Audit Trail:** Password changes and resets are logged in audit trail
 
 ### Key Design Patterns
 - **Monorepo Structure:** Client (`client/`), Server (`server/`), Shared (`shared/`)
