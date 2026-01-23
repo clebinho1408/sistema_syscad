@@ -354,11 +354,11 @@ export async function registerRoutes(
         }
       }
 
-      // Check for duplicate solicitation with same CPF for this driving school
-      const hasPending = await storage.hasPendingSolicitationByCpf(cpf, school.id);
-      if (hasPending) {
+      // Check if CPF already exists in the system (global uniqueness)
+      const existingConductor = await storage.getConductorByCpf(cpf);
+      if (existingConductor) {
         return res.status(400).json({ 
-          message: "Já existe uma solicitação em andamento para este CPF. Aguarde a conclusão ou aprovação da solicitação existente." 
+          message: "Este CPF já está cadastrado no sistema. Cada CPF só pode ser cadastrado uma única vez." 
         });
       }
 
@@ -424,6 +424,74 @@ export async function registerRoutes(
 
       const fullSolicitation = await storage.getSolicitation(solicitation.id);
       res.status(201).json(fullSolicitation);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Delete solicitation (admin only)
+  app.delete("/api/solicitations/:id", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const solicitation = await storage.getSolicitation(req.params.id);
+      if (!solicitation) {
+        return res.status(404).json({ message: "Solicitação não encontrada" });
+      }
+
+      const deleted = await storage.deleteSolicitation(req.params.id);
+      if (!deleted) {
+        return res.status(500).json({ message: "Erro ao excluir solicitação" });
+      }
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "delete",
+        entity: "solicitation",
+        entityId: req.params.id,
+        details: `Solicitação excluída: ${solicitation.type} - ${solicitation.conductor?.nomeCompleto}`,
+      });
+
+      res.json({ message: "Solicitação excluída com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Transfer solicitation to another driving school (admin only)
+  app.post("/api/solicitations/:id/transfer", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const { newDrivingSchoolId } = req.body;
+      
+      if (!newDrivingSchoolId) {
+        return res.status(400).json({ message: "ID da nova autoescola é obrigatório" });
+      }
+
+      const solicitation = await storage.getSolicitation(req.params.id);
+      if (!solicitation) {
+        return res.status(404).json({ message: "Solicitação não encontrada" });
+      }
+
+      const newDrivingSchool = await storage.getDrivingSchool(newDrivingSchoolId);
+      if (!newDrivingSchool) {
+        return res.status(404).json({ message: "Autoescola de destino não encontrada" });
+      }
+
+      if (solicitation.drivingSchoolId === newDrivingSchoolId) {
+        return res.status(400).json({ message: "A solicitação já pertence a esta autoescola" });
+      }
+
+      const oldDrivingSchool = solicitation.drivingSchool;
+      const updated = await storage.transferSolicitation(req.params.id, newDrivingSchoolId);
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "transfer",
+        entity: "solicitation",
+        entityId: req.params.id,
+        details: `Candidato transferido de "${oldDrivingSchool?.nomeFantasia}" para "${newDrivingSchool.nomeFantasia}"`,
+      });
+
+      const fullSolicitation = await storage.getSolicitation(req.params.id);
+      res.json(fullSolicitation);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

@@ -35,6 +35,8 @@ export interface IStorage {
   getSolicitations(filters?: { drivingSchoolId?: string; status?: string; type?: string }): Promise<SolicitationWithDetails[]>;
   createSolicitation(data: InsertSolicitation): Promise<Solicitation>;
   updateSolicitation(id: string, data: Partial<InsertSolicitation>): Promise<Solicitation | undefined>;
+  deleteSolicitation(id: string): Promise<boolean>;
+  transferSolicitation(id: string, newDrivingSchoolId: string): Promise<Solicitation | undefined>;
 
   getDocuments(solicitationId: string): Promise<Document[]>;
   getDocumentById(id: string): Promise<Document | undefined>;
@@ -225,6 +227,24 @@ export class DatabaseStorage implements IStorage {
 
   async updateSolicitation(id: string, data: Partial<InsertSolicitation>): Promise<Solicitation | undefined> {
     const updateData = { ...data, updatedAt: new Date() };
+    const [solicitation] = await db.update(solicitations).set(updateData).where(eq(solicitations.id, id)).returning();
+    return solicitation || undefined;
+  }
+
+  async deleteSolicitation(id: string): Promise<boolean> {
+    // Delete related records first (documents, chat messages, chat read status, access requests)
+    await db.delete(documents).where(eq(documents.solicitationId, id));
+    await db.delete(chatMessages).where(eq(chatMessages.solicitationId, id));
+    await db.delete(chatReadStatus).where(eq(chatReadStatus.solicitationId, id));
+    await db.delete(accessRequests).where(eq(accessRequests.solicitationId, id));
+    
+    // Delete the solicitation
+    const result = await db.delete(solicitations).where(eq(solicitations.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async transferSolicitation(id: string, newDrivingSchoolId: string): Promise<Solicitation | undefined> {
+    const updateData = { drivingSchoolId: newDrivingSchoolId, updatedAt: new Date() };
     const [solicitation] = await db.update(solicitations).set(updateData).where(eq(solicitations.id, id)).returning();
     return solicitation || undefined;
   }
