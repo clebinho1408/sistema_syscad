@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,7 +101,6 @@ export default function ReportsPage() {
   const [candidateSearch, setCandidateSearch] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [expandedSchools, setExpandedSchools] = useState<Set<string>>(new Set());
-  const auditPrintRef = useRef<HTMLDivElement>(null);
 
   const { data: stats, isLoading } = useQuery<ReportStats>({
     queryKey: ["/api/reports", { period }],
@@ -175,10 +174,13 @@ export default function ReportsPage() {
   };
 
   const handlePrintAudit = () => {
-    if (!auditPrintRef.current || !candidateAudit) return;
+    if (!candidateAudit) return;
     
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      alert('Por favor, permita popups para imprimir o relatório.');
+      return;
+    }
     
     const content = `
       <!DOCTYPE html>
@@ -361,9 +363,10 @@ export default function ReportsPage() {
     
     printWindow.document.write(content);
     printWindow.document.close();
-    printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.focus();
       printWindow.print();
-    };
+    }, 250);
   };
 
   return (
@@ -918,7 +921,7 @@ export default function ReportsPage() {
                 data-testid="button-print-audit"
               >
                 <Printer className="w-4 h-4 mr-2" />
-                Imprimir A4
+                Imprimir
               </Button>
             )}
           </DialogHeader>
