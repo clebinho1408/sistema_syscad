@@ -259,7 +259,12 @@ export async function registerRoutes(
 
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
-        return res.status(400).json({ message: "Usuário já existe" });
+        return res.status(400).json({ message: "Usuário já existe com este login" });
+      }
+
+      const existingUserByName = await storage.getUserByName(name);
+      if (existingUserByName) {
+        return res.status(400).json({ message: "Já existe um usuário com este nome" });
       }
 
       const existingSchool = await storage.getDrivingSchoolByName(nomeAutoescola);
@@ -1567,7 +1572,12 @@ export async function registerRoutes(
 
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
-        return res.status(400).json({ message: "Usuário já existe" });
+        return res.status(400).json({ message: "Usuário já existe com este login" });
+      }
+
+      const existingUserByName = await storage.getUserByName(name);
+      if (existingUserByName) {
+        return res.status(400).json({ message: "Já existe um usuário com este nome" });
       }
 
       const hashedPassword = await hashPassword(password);
@@ -1598,6 +1608,14 @@ export async function registerRoutes(
   app.patch("/api/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
     try {
       const { isActive, name, email, role } = req.body;
+      
+      // Check if name already exists for another user
+      if (name !== undefined) {
+        const existingUserByName = await storage.getUserByName(name);
+        if (existingUserByName && existingUserByName.id !== req.params.id) {
+          return res.status(400).json({ message: "Já existe um usuário com este nome" });
+        }
+      }
       
       // Build update data
       const updateData: any = {};
@@ -1685,6 +1703,161 @@ export async function registerRoutes(
       const period = parseInt(req.query.period as string) || 30;
       const stats = await storage.getReportStats(period);
       res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Report: Driving Schools List
+  app.get("/api/reports/driving-schools", requireAuth, requireRole("admin", "operador"), async (req, res) => {
+    try {
+      const schools = await storage.getDrivingSchools();
+      const result = await Promise.all(schools.map(async (school) => {
+        const solicitations = await storage.getSolicitations({ drivingSchoolId: school.id });
+        return {
+          id: school.id,
+          nome: school.nome,
+          telefone: school.telefone,
+          email: school.email,
+          cidade: school.cidade,
+          uf: school.uf,
+          isActive: school.isActive,
+          totalSolicitations: solicitations.length,
+          finalizadas: solicitations.filter(s => s.status === "cadastro_finalizado").length,
+          emAnalise: solicitations.filter(s => s.status === "em_analise").length,
+          pendentes: solicitations.filter(s => s.status === "pendente_correcao").length,
+        };
+      }));
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Report: Candidates by Driving School grouped by Status
+  app.get("/api/reports/candidates-by-school", requireAuth, requireRole("admin", "operador"), async (req, res) => {
+    try {
+      const schools = await storage.getDrivingSchools();
+      const result = await Promise.all(schools.map(async (school) => {
+        const solicitations = await storage.getSolicitations({ drivingSchoolId: school.id });
+        
+        const groupedByStatus = {
+          em_analise: [] as any[],
+          pendente_correcao: [] as any[],
+          cadastro_finalizado: [] as any[],
+          aguardando_penalidade: [] as any[],
+        };
+
+        for (const sol of solicitations) {
+          const candidateData = {
+            id: sol.conductor.id,
+            nome: sol.conductor.nomeCompleto,
+            cpf: sol.conductor.cpf,
+            tipo: sol.type,
+            createdAt: sol.createdAt,
+          };
+          if (sol.status in groupedByStatus) {
+            groupedByStatus[sol.status as keyof typeof groupedByStatus].push(candidateData);
+          }
+        }
+
+        return {
+          schoolId: school.id,
+          schoolName: school.nome,
+          candidates: groupedByStatus,
+        };
+      }));
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Report: Candidate Audit History
+  app.get("/api/reports/candidate-audit/:conductorId", requireAuth, requireRole("admin", "operador"), async (req, res) => {
+    try {
+      const { conductorId } = req.params;
+      const conductor = await storage.getConductor(conductorId);
+      if (!conductor) {
+        return res.status(404).json({ message: "Candidato não encontrado" });
+      }
+
+      const solicitation = await storage.getSolicitationByConductorId(conductorId);
+      if (!solicitation) {
+        return res.status(404).json({ message: "Solicitação não encontrada" });
+      }
+
+      // Get all audit logs for this solicitation
+      const allLogs = await storage.getAuditLogs();
+      const solicitationLogs = allLogs.filter(log => 
+        (log.entity === "solicitation" && log.entityId === solicitation.id) ||
+        (log.entity === "conductor" && log.entityId === conductorId)
+      );
+
+      // Get chat messages as part of the history
+      const messages = await storage.getChatMessages(solicitation.id);
+
+      // Get user names for audit logs
+      const auditLogsWithUserNames = await Promise.all(
+        solicitationLogs.map(async (log) => {
+          const user = await storage.getUser(log.userId);
+          return {
+            id: log.id,
+            action: log.action,
+            entity: log.entity,
+            details: log.details,
+            createdAt: log.createdAt,
+            userName: user?.name || "Sistema",
+          };
+        })
+      );
+
+      res.json({
+        conductor: {
+          id: conductor.id,
+          nome: conductor.nomeCompleto,
+          cpf: conductor.cpf,
+          dataNascimento: conductor.dataNascimento,
+          createdAt: conductor.createdAt,
+        },
+        solicitation: {
+          id: solicitation.id,
+          type: solicitation.type,
+          status: solicitation.status,
+          createdAt: solicitation.createdAt,
+        },
+        auditLogs: auditLogsWithUserNames,
+        messagesCount: messages.length,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Report: Search candidates for audit report
+  app.get("/api/reports/candidates-search", requireAuth, requireRole("admin", "operador"), async (req, res) => {
+    try {
+      const { search } = req.query;
+      const solicitations = await storage.getSolicitations();
+      
+      let results = solicitations;
+      if (search && typeof search === "string" && search.trim()) {
+        const searchLower = search.toLowerCase();
+        results = solicitations.filter(sol => 
+          sol.conductor.nomeCompleto?.toLowerCase().includes(searchLower) ||
+          sol.conductor.cpf?.includes(search)
+        );
+      }
+
+      res.json(results.map(sol => ({
+        conductorId: sol.conductorId,
+        conductorName: sol.conductor.nomeCompleto,
+        conductorCpf: sol.conductor.cpf,
+        type: sol.type,
+        status: sol.status,
+        createdAt: sol.createdAt,
+        drivingSchoolName: sol.drivingSchool.nome,
+      })));
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

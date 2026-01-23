@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Status = "em_analise" | "pendente_correcao" | "cadastro_finalizado" | "aguardando_penalidade";
+export type Status = "em_analise" | "pendente_correcao" | "cadastro_finalizado" | "aguardando_penalidade";
 
 const statusConfig: Record<Status, { label: string; className: string; icon: typeof Clock }> = {
   em_analise: {
