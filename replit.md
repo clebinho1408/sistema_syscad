@@ -57,12 +57,12 @@ Preferred communication style: Simple, everyday language.
 ### Solicitation Statuses
 - Em Análise: Initial status, under review
 - Pendente de Correção: Requires corrections from driving school
-- Cadastro Finalizado: Processing completed, chat still enabled
-- Reprovada: Rejected, chat disabled
+- Cadastro Finalizado: Processing completed, chat disabled
 - Aguardando Penalidade: Waiting for penalty release date
 
 ### Admin Capabilities
-- Full CRUD on solicitation types
+- Full CRUD on solicitation types (via Settings page - Requerimentos tab)
+- Full CRUD on users: create, edit (name, email, role), delete, and block/unblock (via Settings page - Usuários tab)
 - Create, edit (name, phone, address), delete, and block/unblock driving schools
 - Delete solicitations with confirmation
 - Transfer candidates between driving schools
