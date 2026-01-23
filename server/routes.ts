@@ -516,7 +516,6 @@ export async function registerRoutes(
       const statusLabels: Record<string, string> = {
         "pendente_correcao": "PENDENTE",
         "em_analise": "EM ANALISE",
-        "reprovada": "REPROVADA",
         "cadastro_finalizado": "CADASTRO FINALIZADO",
         "aguardando_penalidade": "AGUARDANDO PENALIDADE",
       };
@@ -1110,7 +1109,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Solicitação não encontrada" });
       }
 
-      if (solicitation.status === "reprovada") {
+      if (solicitation.status === "cadastro_finalizado") {
         return res.status(400).json({ message: "Solicitação finalizada, chat bloqueado" });
       }
 

@@ -161,7 +161,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(solicitations.conductorId, conductor.id),
           eq(solicitations.drivingSchoolId, drivingSchoolId),
-          ne(solicitations.status, "reprovada")
+          ne(solicitations.status, "cadastro_finalizado")
         )
       );
     
@@ -447,7 +447,7 @@ export class DatabaseStorage implements IStorage {
     const emAnalise = allSolicitations.filter(s => s.status === "em_analise").length;
     const pendentes = allSolicitations.filter(s => s.status === "pendente_correcao").length;
     const finalizados = allSolicitations.filter(s => s.status === "cadastro_finalizado").length;
-    const reprovadas = allSolicitations.filter(s => s.status === "reprovada").length;
+    const aguardandoPenalidade = allSolicitations.filter(s => s.status === "aguardando_penalidade").length;
 
     const schoolsCount = (await db.select().from(drivingSchools)).length;
     const operadoresCount = (await db.select().from(users).where(eq(users.role, "operador"))).length;
@@ -457,7 +457,7 @@ export class DatabaseStorage implements IStorage {
       emAnalise,
       pendentes,
       finalizados,
-      reprovadas,
+      aguardandoPenalidade,
       autoescolas: schoolsCount,
       operadores: operadoresCount,
     };
@@ -473,7 +473,7 @@ export class DatabaseStorage implements IStorage {
       em_analise: allSolicitations.filter(s => s.status === "em_analise").length,
       pendente_correcao: allSolicitations.filter(s => s.status === "pendente_correcao").length,
       cadastro_finalizado: allSolicitations.filter(s => s.status === "cadastro_finalizado").length,
-      reprovada: allSolicitations.filter(s => s.status === "reprovada").length,
+      aguardando_penalidade: allSolicitations.filter(s => s.status === "aguardando_penalidade").length,
     };
 
     const byType = {

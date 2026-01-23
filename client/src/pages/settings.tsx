@@ -21,8 +21,8 @@ export default function SettingsPage() {
   const systemRules = [
     { 
       id: "chat-block", 
-      label: "Chat bloqueado após reprovação", 
-      description: "Mensagens são bloqueadas apenas quando o status é 'Reprovada'",
+      label: "Chat bloqueado após finalização", 
+      description: "Mensagens são bloqueadas quando o status é 'Cadastro Finalizado'",
       status: true 
     },
     { 

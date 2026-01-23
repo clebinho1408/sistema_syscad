@@ -13,7 +13,7 @@ interface DashboardStats {
   emAnalise: number;
   pendentes: number;
   finalizados: number;
-  reprovadas: number;
+  aguardandoPenalidade: number;
   autoescolas?: number;
   operadores?: number;
 }

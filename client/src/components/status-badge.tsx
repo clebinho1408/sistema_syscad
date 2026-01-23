@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Status = "em_analise" | "pendente_correcao" | "reprovada" | "cadastro_finalizado" | "aguardando_penalidade";
+type Status = "em_analise" | "pendente_correcao" | "cadastro_finalizado" | "aguardando_penalidade";
 
 const statusConfig: Record<Status, { label: string; className: string; icon: typeof Clock }> = {
   em_analise: {
@@ -15,11 +15,6 @@ const statusConfig: Record<Status, { label: string; className: string; icon: typ
     className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800",
     icon: AlertTriangle,
   },
-  reprovada: {
-    label: "Reprovada",
-    className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800",
-    icon: XCircle,
-  },
   cadastro_finalizado: {
     label: "Cadastro Finalizado",
     className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
@@ -27,7 +22,7 @@ const statusConfig: Record<Status, { label: string; className: string; icon: typ
   },
   aguardando_penalidade: {
     label: "Aguardando Penalidade",
-    className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800",
+    className: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200 dark:border-orange-800",
     icon: AlertTriangle,
   },
 };

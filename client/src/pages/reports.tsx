@@ -14,7 +14,7 @@ interface ReportStats {
     em_analise: number;
     pendente_correcao: number;
     cadastro_finalizado: number;
-    reprovada: number;
+    aguardando_penalidade: number;
   };
   byType: {
     novo_cadastro: number;
@@ -118,19 +118,19 @@ export default function ReportsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Reprovadas</CardTitle>
-            <XCircle className="h-4 w-4 text-red-500" />
+            <CardTitle className="text-sm font-medium">Aguardando Penalidade</CardTitle>
+            <Clock className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-red-600" data-testid="report-rejected">
-                  {stats?.byStatus.reprovada || 0}
+                <div className="text-2xl font-bold text-orange-600" data-testid="report-awaiting-penalty">
+                  {stats?.byStatus.aguardando_penalidade || 0}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {stats?.totalSolicitations ? ((stats.byStatus.reprovada / stats.totalSolicitations) * 100).toFixed(1) : 0}% do total
+                  {stats?.totalSolicitations ? ((stats.byStatus.aguardando_penalidade / stats.totalSolicitations) * 100).toFixed(1) : 0}% do total
                 </p>
               </>
             )}
@@ -210,14 +210,14 @@ export default function ReportsPage() {
                   <span className="w-12 text-sm font-medium text-right">{stats?.byStatus.cadastro_finalizado || 0}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="w-32 text-sm">Reprovadas</span>
+                  <span className="w-32 text-sm">Aguardando Penalidade</span>
                   <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-red-500 transition-all"
-                      style={{ width: `${stats?.totalSolicitations ? (stats.byStatus.reprovada / stats.totalSolicitations) * 100 : 0}%` }}
+                      className="h-full bg-orange-500 transition-all"
+                      style={{ width: `${stats?.totalSolicitations ? (stats.byStatus.aguardando_penalidade / stats.totalSolicitations) * 100 : 0}%` }}
                     />
                   </div>
-                  <span className="w-12 text-sm font-medium text-right">{stats?.byStatus.reprovada || 0}</span>
+                  <span className="w-12 text-sm font-medium text-right">{stats?.byStatus.aguardando_penalidade || 0}</span>
                 </div>
               </div>
             )}

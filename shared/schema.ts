@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["autoescola", "operador", "admin"]);
-export const solicitationStatusEnum = pgEnum("solicitation_status", ["em_analise", "pendente_correcao", "reprovada", "cadastro_finalizado", "aguardando_penalidade"]);
+export const solicitationStatusEnum = pgEnum("solicitation_status", ["em_analise", "pendente_correcao", "cadastro_finalizado", "aguardando_penalidade"]);
 export const solicitationTypeEnum = pgEnum("solicitation_type", ["novo_cadastro", "alteracao_dados", "atualizacao", "regularizacao", "transferencia_renovacao", "reinicio", "transferencia", "renovacao", "adicao_categoria", "primeira_habilitacao", "mudanca_categoria"]);
 export const accessRequestStatusEnum = pgEnum("access_request_status", ["pending", "approved", "rejected"]);
 
