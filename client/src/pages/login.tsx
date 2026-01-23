@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Shield, Car, Loader2 } from "lucide-react";
+import { Car, Loader2 } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -38,9 +39,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center">
-            <Shield className="w-6 h-6 text-primary-foreground" />
-          </div>
+          <img src={logoImg} alt="SysCad" className="w-10 h-10 rounded-md object-contain" />
           <div>
             <h1 className="font-semibold text-lg leading-none">SysCad</h1>
             <span className="text-xs text-muted-foreground">Sistema de Cadastro</span>

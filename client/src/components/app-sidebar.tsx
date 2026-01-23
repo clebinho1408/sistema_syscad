@@ -21,7 +21,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Shield,
   LayoutDashboard,
   FileText,
   Users,
@@ -34,6 +33,7 @@ import {
   History,
   ListOrdered,
 } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 
 export function AppSidebar() {
   const { user, logout } = useAuth();
@@ -103,9 +103,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-sidebar-primary flex items-center justify-center">
-            <Shield className="w-6 h-6 text-sidebar-primary-foreground" />
-          </div>
+          <img src={logoImg} alt="SysCad" className="w-10 h-10 rounded-md object-contain" />
           <div>
             <h1 className="font-semibold text-sm leading-none text-sidebar-foreground">SysCad</h1>
             <span className="text-xs text-sidebar-foreground/70">Sistema de Cadastro</span>
