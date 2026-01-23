@@ -582,36 +582,6 @@ export default function NewSolicitationPage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Requerimento</CardTitle>
-              <CardDescription>Selecione o requerimento que deseja criar</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="w-full md:w-80" data-testid="select-type">
-                          <SelectValue placeholder="Selecione o requerimento" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {solicitationTypes?.map((type) => (
-                          <SelectItem key={type.id} value={type.value}>{type.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
           {ocrStatus?.available && (
             <Card className="border-primary/20 bg-primary/5">
               <CardHeader>
@@ -664,6 +634,36 @@ export default function NewSolicitationPage() {
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Requerimento</CardTitle>
+              <CardDescription>Selecione o requerimento que deseja criar</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-full md:w-80" data-testid="select-type">
+                          <SelectValue placeholder="Selecione o requerimento" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {solicitationTypes?.map((type) => (
+                          <SelectItem key={type.id} value={type.value}>{type.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
