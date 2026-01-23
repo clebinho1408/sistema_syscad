@@ -177,7 +177,7 @@ export default function SolicitationsPage() {
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger data-testid="select-type-filter">
-                <SelectValue placeholder="Tipo de Solicitação" />
+                <SelectValue placeholder="Requerimento" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os tipos</SelectItem>

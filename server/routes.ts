@@ -349,7 +349,7 @@ export async function registerRoutes(
           console.log(`Resolved solicitation type from ID "${solicitationType.id}" to value "${type}"`);
         } else {
           return res.status(400).json({ 
-            message: `Tipo de solicitação inválido: "${type}". Por favor, selecione um tipo válido da lista.` 
+            message: `Requerimento inválido: "${type}". Por favor, selecione um requerimento válido da lista.` 
           });
         }
       }
@@ -1253,7 +1253,7 @@ export async function registerRoutes(
         action: "create",
         entity: "solicitation_type",
         entityId: type.id,
-        details: `Tipo de solicitação "${label}" criado`,
+        details: `Requerimento "${label}" criado`,
       });
       
       res.status(201).json(type);
@@ -1282,7 +1282,7 @@ export async function registerRoutes(
         action: "update",
         entity: "solicitation_type",
         entityId: req.params.id,
-        details: `Tipo de solicitação "${type.label}" atualizado`,
+        details: `Requerimento "${type.label}" atualizado`,
       });
       
       res.json(type);
@@ -1306,7 +1306,7 @@ export async function registerRoutes(
           action: "delete",
           entity: "solicitation_type",
           entityId: req.params.id,
-          details: `Tipo de solicitação "${type.label}" removido`,
+          details: `Requerimento "${type.label}" removido`,
         });
       }
       

@@ -140,7 +140,7 @@ function validateCpf(cpf: string): boolean {
 }
 
 const solicitationSchema = z.object({
-  type: z.string().min(1, "Tipo de solicitação é obrigatório"),
+  type: z.string().min(1, "Requerimento é obrigatório"),
   cpf: z.string().min(14, "CPF inválido").refine((val) => validateCpf(val), "CPF inválido"),
   nomeCompleto: z.string().min(2, "Nome é obrigatório").transform(toUpperWithoutAccents),
   nomeSocial: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
@@ -584,8 +584,8 @@ export default function NewSolicitationPage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Tipo de Solicitação</CardTitle>
-              <CardDescription>Selecione o tipo de solicitação que deseja criar</CardDescription>
+              <CardTitle>Requerimento</CardTitle>
+              <CardDescription>Selecione o requerimento que deseja criar</CardDescription>
             </CardHeader>
             <CardContent>
               <FormField
@@ -596,7 +596,7 @@ export default function NewSolicitationPage() {
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="w-full md:w-80" data-testid="select-type">
-                          <SelectValue placeholder="Selecione o tipo" />
+                          <SelectValue placeholder="Selecione o requerimento" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>

@@ -23,7 +23,7 @@ export default function SettingsPage() {
               Documentos Obrigatórios
             </CardTitle>
             <CardDescription>
-              Configure quais documentos são obrigatórios por tipo de solicitação
+              Configure quais documentos são obrigatórios por requerimento
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

@@ -137,9 +137,9 @@ export default function SolicitationTypesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tipos de Solicitação</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Requerimentos</h1>
           <p className="text-muted-foreground">
-            Gerencie os tipos de solicitação disponíveis no sistema
+            Gerencie os requerimentos disponíveis no sistema
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -154,7 +154,7 @@ export default function SolicitationTypesPage() {
             <DialogHeader>
               <DialogTitle>Criar Novo Tipo</DialogTitle>
               <DialogDescription>
-                Adicione um novo tipo de solicitação ao sistema
+                Adicione um novo requerimento ao sistema
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -210,7 +210,7 @@ export default function SolicitationTypesPage() {
             Tipos Cadastrados
           </CardTitle>
           <CardDescription>
-            Lista de todos os tipos de solicitação disponíveis
+            Lista de todos os requerimentos disponíveis
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -278,7 +278,7 @@ export default function SolicitationTypesPage() {
           <DialogHeader>
             <DialogTitle>Editar Tipo</DialogTitle>
             <DialogDescription>
-              Altere as informações do tipo de solicitação
+              Altere as informações do requerimento
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
