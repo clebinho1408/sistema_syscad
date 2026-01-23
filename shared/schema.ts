@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["autoescola", "operador", "admin"]);
-export const solicitationStatusEnum = pgEnum("solicitation_status", ["em_analise", "pendente_correcao", "aprovada", "reprovada", "cadastro_finalizado", "aguardando_penalidade"]);
+export const solicitationStatusEnum = pgEnum("solicitation_status", ["em_analise", "pendente_correcao", "reprovada", "cadastro_finalizado", "aguardando_penalidade"]);
 export const solicitationTypeEnum = pgEnum("solicitation_type", ["novo_cadastro", "alteracao_dados", "atualizacao", "regularizacao", "transferencia_renovacao", "reinicio", "transferencia", "renovacao", "adicao_categoria", "primeira_habilitacao", "mudanca_categoria"]);
 export const accessRequestStatusEnum = pgEnum("access_request_status", ["pending", "approved", "rejected"]);
 
@@ -233,6 +233,7 @@ export const accessRequestsRelations = relations(accessRequests, ({ one }) => ({
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertDrivingSchoolSchema = createInsertSchema(drivingSchools).omit({ id: true, createdAt: true });
+export const updateDrivingSchoolSchema = createInsertSchema(drivingSchools).omit({ id: true, createdAt: true, userId: true, email: true }).partial();
 export const insertConductorSchema = createInsertSchema(conductors).omit({ id: true, createdAt: true });
 export const insertSolicitationSchema = createInsertSchema(solicitations).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
@@ -245,6 +246,7 @@ export const insertSolicitationTypeSchema = createInsertSchema(solicitationTypes
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertDrivingSchool = z.infer<typeof insertDrivingSchoolSchema>;
+export type UpdateDrivingSchool = z.infer<typeof updateDrivingSchoolSchema>;
 export type DrivingSchool = typeof drivingSchools.$inferSelect;
 export type InsertConductor = z.infer<typeof insertConductorSchema>;
 export type Conductor = typeof conductors.$inferSelect;

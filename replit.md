@@ -58,8 +58,15 @@ Preferred communication style: Simple, everyday language.
 - Em Análise: Initial status, under review
 - Pendente de Correção: Requires corrections from driving school
 - Cadastro Finalizado: Processing completed, chat still enabled
-- Aprovada: Fully approved, chat disabled
+- Reprovada: Rejected, chat disabled
 - Aguardando Penalidade: Waiting for penalty release date
+
+### Admin Capabilities
+- Full CRUD on solicitation types
+- Create, edit (name, phone, address), delete, and block/unblock driving schools
+- Delete solicitations with confirmation
+- Transfer candidates between driving schools
+- Access to all statistics and reports
 
 ### Key Design Patterns
 - **Monorepo Structure:** Client (`client/`), Server (`server/`), Shared (`shared/`)

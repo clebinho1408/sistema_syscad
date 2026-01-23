@@ -65,9 +65,8 @@ export function AppSidebar() {
         { title: "Solicitações", url: "/solicitations", icon: FileText },
         { title: "Autoescolas", url: "/driving-schools", icon: Building2 },
         { title: "Usuários", url: "/users", icon: Users },
-        { title: "Tipos de Solicitação", url: "/solicitation-types", icon: ListOrdered },
+        { title: "Tipos de Requerimento", url: "/solicitation-types", icon: ListOrdered },
         { title: "Relatórios", url: "/reports", icon: BarChart3 },
-        { title: "Logs de Auditoria", url: "/audit-logs", icon: History },
         { title: "Configurações", url: "/settings", icon: Settings },
       ];
     }

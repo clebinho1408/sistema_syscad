@@ -21,8 +21,8 @@ export default function SettingsPage() {
   const systemRules = [
     { 
       id: "chat-block", 
-      label: "Chat bloqueado após aprovação", 
-      description: "Mensagens são bloqueadas apenas quando o status é 'Aprovada'",
+      label: "Chat bloqueado após reprovação", 
+      description: "Mensagens são bloqueadas apenas quando o status é 'Reprovada'",
       status: true 
     },
     { 
@@ -49,8 +49,7 @@ export default function SettingsPage() {
   const solicitationStatuses = [
     { id: "em_analise", label: "Em Análise", description: "Solicitação aguardando análise do operador", color: "bg-blue-500" },
     { id: "pendente_correcao", label: "Pendente de Correção", description: "Aguardando correção pela autoescola", color: "bg-yellow-500" },
-    { id: "cadastro_finalizado", label: "Cadastro Finalizado", description: "Processamento concluído, chat ainda habilitado", color: "bg-emerald-500" },
-    { id: "aprovada", label: "Aprovada", description: "Totalmente aprovada, chat desabilitado", color: "bg-green-600" },
+    { id: "cadastro_finalizado", label: "Cadastro Finalizado", description: "Processamento concluído", color: "bg-emerald-500" },
     { id: "aguardando_penalidade", label: "Aguardando Penalidade", description: "Aguardando liberação de penalidade", color: "bg-orange-500" },
   ];
 

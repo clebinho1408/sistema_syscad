@@ -13,7 +13,7 @@ interface ReportStats {
   byStatus: {
     em_analise: number;
     pendente_correcao: number;
-    aprovada: number;
+    cadastro_finalizado: number;
     reprovada: number;
   };
   byType: {
@@ -97,7 +97,7 @@ export default function ReportsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aprovadas</CardTitle>
+            <CardTitle className="text-sm font-medium">Finalizadas</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
@@ -106,10 +106,10 @@ export default function ReportsPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold text-emerald-600" data-testid="report-approved">
-                  {stats?.byStatus.aprovada || 0}
+                  {stats?.byStatus.cadastro_finalizado || 0}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {stats?.totalSolicitations ? ((stats.byStatus.aprovada / stats.totalSolicitations) * 100).toFixed(1) : 0}% do total
+                  {stats?.totalSolicitations ? ((stats.byStatus.cadastro_finalizado / stats.totalSolicitations) * 100).toFixed(1) : 0}% do total
                 </p>
               </>
             )}
@@ -200,14 +200,14 @@ export default function ReportsPage() {
                   <span className="w-12 text-sm font-medium text-right">{stats?.byStatus.pendente_correcao || 0}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="w-32 text-sm">Aprovadas</span>
+                  <span className="w-32 text-sm">Finalizadas</span>
                   <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-emerald-500 transition-all"
-                      style={{ width: `${stats?.totalSolicitations ? (stats.byStatus.aprovada / stats.totalSolicitations) * 100 : 0}%` }}
+                      style={{ width: `${stats?.totalSolicitations ? (stats.byStatus.cadastro_finalizado / stats.totalSolicitations) * 100 : 0}%` }}
                     />
                   </div>
-                  <span className="w-12 text-sm font-medium text-right">{stats?.byStatus.aprovada || 0}</span>
+                  <span className="w-12 text-sm font-medium text-right">{stats?.byStatus.cadastro_finalizado || 0}</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="w-32 text-sm">Reprovadas</span>

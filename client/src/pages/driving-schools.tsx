@@ -13,8 +13,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Building2, Search, Ban, CheckCircle, MapPin, Phone, Mail, Plus, Loader2 } from "lucide-react";
-import type { DrivingSchool } from "@shared/schema";
+import { Building2, Search, Ban, CheckCircle, MapPin, Phone, Mail, Plus, Loader2, Pencil, Trash2 } from "lucide-react";
+import type { DrivingSchool, UpdateDrivingSchool } from "@shared/schema";
+import { updateDrivingSchoolSchema } from "@shared/schema";
 
 const registerSchema = z.object({
   username: z.string().min(3, "Usuário deve ter pelo menos 3 caracteres"),
@@ -37,6 +38,8 @@ type RegisterForm = z.infer<typeof registerSchema>;
 export default function DrivingSchoolsPage() {
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingSchool, setEditingSchool] = useState<DrivingSchool | null>(null);
+  const [deletingSchool, setDeletingSchool] = useState<DrivingSchool | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -88,6 +91,34 @@ export default function DrivingSchoolsPage() {
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateDrivingSchool }) => {
+      return apiRequest("PATCH", `/api/driving-schools/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driving-schools"] });
+      toast({ title: "Autoescola atualizada com sucesso!" });
+      setEditingSchool(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/driving-schools/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driving-schools"] });
+      toast({ title: "Autoescola excluída com sucesso!" });
+      setDeletingSchool(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
     },
   });
 
@@ -416,7 +447,23 @@ export default function DrivingSchoolsPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditingSchool(school)}
+                      data-testid={`button-edit-${school.id}`}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeletingSchool(school)}
+                      data-testid={`button-delete-${school.id}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button
@@ -474,6 +521,237 @@ export default function DrivingSchoolsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingSchool} onOpenChange={(open) => !open && setEditingSchool(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Autoescola</DialogTitle>
+            <DialogDescription>
+              Atualize as informações da autoescola "{editingSchool?.nome}"
+            </DialogDescription>
+          </DialogHeader>
+          {editingSchool && (
+            <EditSchoolForm
+              school={editingSchool}
+              onSubmit={(data) => editMutation.mutate({ id: editingSchool.id, data })}
+              isPending={editMutation.isPending}
+              onCancel={() => setEditingSchool(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={!!deletingSchool} onOpenChange={(open) => !open && setDeletingSchool(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Autoescola</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir a autoescola "{deletingSchool?.nome}"? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingSchool(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deletingSchool && deleteMutation.mutate(deletingSchool.id)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+const editSchoolSchema = updateDrivingSchoolSchema.extend({
+  nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  telefone: z.string().min(10, "Telefone inválido"),
+  cep: z.string().min(8, "CEP inválido"),
+  logradouro: z.string().min(2, "Logradouro obrigatório"),
+  numero: z.string().min(1, "Número obrigatório"),
+  complemento: z.string().optional(),
+  bairro: z.string().min(2, "Bairro obrigatório"),
+  cidade: z.string().min(2, "Cidade obrigatória"),
+  uf: z.string().length(2, "UF deve ter 2 caracteres"),
+});
+
+type EditSchoolFormData = z.infer<typeof editSchoolSchema>;
+
+function EditSchoolForm({ 
+  school, 
+  onSubmit, 
+  isPending, 
+  onCancel 
+}: { 
+  school: DrivingSchool; 
+  onSubmit: (data: EditSchoolFormData) => void; 
+  isPending: boolean;
+  onCancel: () => void;
+}) {
+  const editForm = useForm<EditSchoolFormData>({
+    resolver: zodResolver(editSchoolSchema),
+    defaultValues: {
+      nome: school.nome,
+      telefone: school.telefone,
+      cep: school.cep,
+      logradouro: school.logradouro,
+      numero: school.numero,
+      complemento: school.complemento || "",
+      bairro: school.bairro,
+      cidade: school.cidade,
+      uf: school.uf,
+    },
+  });
+
+  const handleSubmit = (data: EditSchoolFormData) => {
+    onSubmit(data);
+  };
+
+  return (
+    <Form {...editForm}>
+      <form onSubmit={editForm.handleSubmit(handleSubmit)} className="space-y-4">
+        <div className="grid gap-4">
+          <FormField
+            control={editForm.control}
+            name="nome"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome da Autoescola</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-edit-nome" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={editForm.control}
+            name="telefone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Telefone</FormLabel>
+                <FormControl>
+                  <Input {...field} data-testid="input-edit-telefone" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="grid grid-cols-3 gap-4">
+            <FormField
+              control={editForm.control}
+              name="cep"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>CEP</FormLabel>
+                  <FormControl>
+                    <Input {...field} data-testid="input-edit-cep" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={editForm.control}
+              name="logradouro"
+              render={({ field }) => (
+                <FormItem className="col-span-2">
+                  <FormLabel>Logradouro</FormLabel>
+                  <FormControl>
+                    <Input {...field} data-testid="input-edit-logradouro" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            <FormField
+              control={editForm.control}
+              name="numero"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Número</FormLabel>
+                  <FormControl>
+                    <Input {...field} data-testid="input-edit-numero" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={editForm.control}
+              name="complemento"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Complemento</FormLabel>
+                  <FormControl>
+                    <Input {...field} data-testid="input-edit-complemento" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={editForm.control}
+              name="bairro"
+              render={({ field }) => (
+                <FormItem className="col-span-2">
+                  <FormLabel>Bairro</FormLabel>
+                  <FormControl>
+                    <Input {...field} data-testid="input-edit-bairro" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <FormField
+              control={editForm.control}
+              name="cidade"
+              render={({ field }) => (
+                <FormItem className="col-span-2">
+                  <FormLabel>Cidade</FormLabel>
+                  <FormControl>
+                    <Input {...field} data-testid="input-edit-cidade" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={editForm.control}
+              name="uf"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>UF</FormLabel>
+                  <FormControl>
+                    <Input {...field} maxLength={2} data-testid="input-edit-uf" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel} data-testid="button-cancel-edit">
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={isPending} data-testid="button-save-edit">
+            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            Salvar
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
   );
 }

@@ -1,6 +1,6 @@
 import {
   users, drivingSchools, conductors, solicitations, documents, chatMessages, auditLogs, requiredDocuments, chatReadStatus, accessRequests, solicitationTypes,
-  type User, type InsertUser, type DrivingSchool, type InsertDrivingSchool,
+  type User, type InsertUser, type DrivingSchool, type InsertDrivingSchool, type UpdateDrivingSchool,
   type Conductor, type InsertConductor, type Solicitation, type InsertSolicitation,
   type Document, type InsertDocument, type ChatMessage, type InsertChatMessage,
   type AuditLog, type InsertAuditLog, type RequiredDocument, type InsertRequiredDocument,
@@ -23,7 +23,8 @@ export interface IStorage {
   getDrivingSchoolByName(nome: string): Promise<DrivingSchool | undefined>;
   getDrivingSchools(): Promise<DrivingSchool[]>;
   createDrivingSchool(data: InsertDrivingSchool): Promise<DrivingSchool>;
-  updateDrivingSchool(id: string, data: Partial<InsertDrivingSchool>): Promise<DrivingSchool | undefined>;
+  updateDrivingSchool(id: string, data: UpdateDrivingSchool): Promise<DrivingSchool | undefined>;
+  deleteDrivingSchool(id: string): Promise<boolean>;
 
   getConductor(id: string): Promise<Conductor | undefined>;
   getConductorByCpf(cpf: string): Promise<Conductor | undefined>;
@@ -120,9 +121,14 @@ export class DatabaseStorage implements IStorage {
     return school;
   }
 
-  async updateDrivingSchool(id: string, data: Partial<InsertDrivingSchool>): Promise<DrivingSchool | undefined> {
+  async updateDrivingSchool(id: string, data: UpdateDrivingSchool): Promise<DrivingSchool | undefined> {
     const [school] = await db.update(drivingSchools).set(data).where(eq(drivingSchools.id, id)).returning();
     return school || undefined;
+  }
+
+  async deleteDrivingSchool(id: string): Promise<boolean> {
+    const result = await db.delete(drivingSchools).where(eq(drivingSchools.id, id)).returning();
+    return result.length > 0;
   }
 
   async getConductor(id: string): Promise<Conductor | undefined> {
@@ -155,7 +161,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(solicitations.conductorId, conductor.id),
           eq(solicitations.drivingSchoolId, drivingSchoolId),
-          ne(solicitations.status, "aprovada")
+          ne(solicitations.status, "reprovada")
         )
       );
     
@@ -440,7 +446,7 @@ export class DatabaseStorage implements IStorage {
     const total = allSolicitations.length;
     const emAnalise = allSolicitations.filter(s => s.status === "em_analise").length;
     const pendentes = allSolicitations.filter(s => s.status === "pendente_correcao").length;
-    const aprovadas = allSolicitations.filter(s => s.status === "aprovada").length;
+    const finalizados = allSolicitations.filter(s => s.status === "cadastro_finalizado").length;
     const reprovadas = allSolicitations.filter(s => s.status === "reprovada").length;
 
     const schoolsCount = (await db.select().from(drivingSchools)).length;
@@ -450,7 +456,7 @@ export class DatabaseStorage implements IStorage {
       total,
       emAnalise,
       pendentes,
-      aprovadas,
+      finalizados,
       reprovadas,
       autoescolas: schoolsCount,
       operadores: operadoresCount,
@@ -466,7 +472,7 @@ export class DatabaseStorage implements IStorage {
     const byStatus = {
       em_analise: allSolicitations.filter(s => s.status === "em_analise").length,
       pendente_correcao: allSolicitations.filter(s => s.status === "pendente_correcao").length,
-      aprovada: allSolicitations.filter(s => s.status === "aprovada").length,
+      cadastro_finalizado: allSolicitations.filter(s => s.status === "cadastro_finalizado").length,
       reprovada: allSolicitations.filter(s => s.status === "reprovada").length,
     };
 

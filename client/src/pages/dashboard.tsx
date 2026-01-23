@@ -12,7 +12,7 @@ interface DashboardStats {
   total: number;
   emAnalise: number;
   pendentes: number;
-  aprovadas: number;
+  finalizados: number;
   reprovadas: number;
   autoescolas?: number;
   operadores?: number;
@@ -118,7 +118,7 @@ export default function DashboardPage() {
             {statsLoading ? (
               <Skeleton className="h-8 w-16" />
             ) : (
-              <div className="text-2xl font-bold text-emerald-600" data-testid="stat-approved">{stats?.aprovadas || 0}</div>
+              <div className="text-2xl font-bold text-emerald-600" data-testid="stat-approved">{stats?.finalizados || 0}</div>
             )}
           </CardContent>
         </Card>

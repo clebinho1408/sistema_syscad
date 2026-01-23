@@ -626,7 +626,7 @@ export default function SolicitationDetailPage() {
     );
   }
 
-  const isFinalized = solicitation.status === "aprovada" || solicitation.status === "cadastro_finalizado";
+  const isFinalized = solicitation.status === "cadastro_finalizado";
   const isAguardandoPenalidade = solicitation.status === "aguardando_penalidade";
   const canEdit = user?.role === "operador" || user?.role === "admin";
   const isAutoescola = user?.role === "autoescola";
@@ -1813,10 +1813,10 @@ export default function SolicitationDetailPage() {
                     placeholder="Digite uma mensagem..." 
                     value={newMessage}
                     onChange={(e) => handleMessageChange(e.target.value)}
-                    disabled={solicitation.status === "aprovada"}
+                    disabled={solicitation.status === "reprovada"}
                     data-testid="input-chat-message-popup"
                   />
-                  <Button type="submit" size="icon" disabled={solicitation.status === "aprovada" || sendMessageMutation.isPending} data-testid="button-send-message-popup">
+                  <Button type="submit" size="icon" disabled={solicitation.status === "reprovada" || sendMessageMutation.isPending} data-testid="button-send-message-popup">
                     {sendMessageMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </Button>
                 </form>
@@ -1824,7 +1824,7 @@ export default function SolicitationDetailPage() {
             </DialogContent>
           </Dialog>
 
-          {isAutoescola && solicitation.status !== "aprovada" && (
+          {isAutoescola && solicitation.status !== "reprovada" && (
             <div className="space-y-3">
               {solicitation.accessGranted ? (
                 <Link href={`/solicitations/${solicitation.id}/edit`}>

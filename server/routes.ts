@@ -1,4 +1,4 @@
-import { conductors, solicitations, solicitationTypeEnum } from "@shared/schema";
+import { conductors, solicitations, solicitationTypeEnum, updateDrivingSchoolSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { db } from "./db";
 import type { Express } from "express";
@@ -514,7 +514,6 @@ export async function registerRoutes(
       const updated = await storage.updateSolicitation(req.params.id, updateData);
 
       const statusLabels: Record<string, string> = {
-        "aprovada": "APROVADA",
         "pendente_correcao": "PENDENTE",
         "em_analise": "EM ANALISE",
         "reprovada": "REPROVADA",
@@ -1111,7 +1110,7 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Solicitação não encontrada" });
       }
 
-      if (solicitation.status === "aprovada" || solicitation.status === "reprovada") {
+      if (solicitation.status === "reprovada") {
         return res.status(400).json({ message: "Solicitação finalizada, chat bloqueado" });
       }
 
@@ -1398,8 +1397,25 @@ export async function registerRoutes(
 
   app.patch("/api/driving-schools/:id", requireAuth, requireRole("admin"), async (req, res) => {
     try {
-      const { isActive } = req.body;
-      const updated = await storage.updateDrivingSchool(req.params.id, { isActive });
+      const parseResult = updateDrivingSchoolSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: "Dados inválidos", errors: parseResult.error.errors });
+      }
+
+      const { isActive, nome, telefone, logradouro, numero, complemento, bairro, cidade, uf, cep } = parseResult.data;
+      const updateData: any = {};
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (nome) updateData.nome = nome;
+      if (telefone) updateData.telefone = telefone;
+      if (logradouro) updateData.logradouro = logradouro;
+      if (numero) updateData.numero = numero;
+      if (complemento !== undefined) updateData.complemento = complemento;
+      if (bairro) updateData.bairro = bairro;
+      if (cidade) updateData.cidade = cidade;
+      if (uf) updateData.uf = uf;
+      if (cep) updateData.cep = cep;
+
+      const updated = await storage.updateDrivingSchool(req.params.id, updateData);
       
       if (!updated) {
         return res.status(404).json({ message: "Autoescola não encontrada" });
@@ -1410,10 +1426,36 @@ export async function registerRoutes(
         action: "update",
         entity: "driving_school",
         entityId: req.params.id,
-        details: `Autoescola ${isActive ? "desbloqueada" : "bloqueada"}`,
+        details: isActive !== undefined ? `Autoescola ${isActive ? "desbloqueada" : "bloqueada"}` : `Autoescola atualizada: ${updated.nome}`,
       });
 
       res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/driving-schools/:id", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const school = await storage.getDrivingSchool(req.params.id);
+      if (!school) {
+        return res.status(404).json({ message: "Autoescola não encontrada" });
+      }
+
+      const deleted = await storage.deleteDrivingSchool(req.params.id);
+      if (!deleted) {
+        return res.status(500).json({ message: "Erro ao excluir autoescola" });
+      }
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "delete",
+        entity: "driving_school",
+        entityId: req.params.id,
+        details: `Autoescola excluída: ${school.nome}`,
+      });
+
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
