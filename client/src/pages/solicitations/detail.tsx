@@ -1119,109 +1119,135 @@ export default function SolicitationDetailPage() {
             </CardContent>
           </Card>
 
-          {isAutoescola && solicitation.status === "cadastro_finalizado" && (
-            <Card className="border-primary/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-primary">
-                  <Upload className="w-5 h-5" />
-                  Anexar Renach Assinado
-                </CardTitle>
-                <CardDescription>
-                  {documents?.some(d => d.category === "renach_assinado") 
-                    ? "Você já anexou um Renach Assinado. Você pode substituí-lo anexando um novo arquivo."
-                    : "O cadastro foi finalizado. Agora você pode anexar o Renach Assinado."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {renachFile ? (
-                  <div className="flex items-center gap-4 p-3 border rounded-lg bg-muted/50">
-                    <FileText className="w-8 h-8 text-primary flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{renachFile.name}</p>
-                      <p className="text-sm text-muted-foreground">{renachFile.type}</p>
+          {isAutoescola && solicitation.status === "cadastro_finalizado" && (() => {
+            const existingRenach = documents?.find(d => d.category === "renach_assinado");
+            const hasRenachAccess = solicitation.accessGranted && 
+              solicitation.accessRequestedDocuments?.includes("renach_assinado");
+            const canUploadRenach = !existingRenach || hasRenachAccess;
+            
+            return (
+              <Card className={existingRenach && !canUploadRenach ? "border-orange-500/50" : "border-primary/50"}>
+                <CardHeader>
+                  <CardTitle className={`flex items-center gap-2 ${existingRenach && !canUploadRenach ? "text-orange-600" : "text-primary"}`}>
+                    <Upload className="w-5 h-5" />
+                    {existingRenach ? "Renach Assinado Anexado" : "Anexar Renach Assinado"}
+                  </CardTitle>
+                  <CardDescription>
+                    {existingRenach ? (
+                      canUploadRenach 
+                        ? "Acesso para substituição liberado. Você pode anexar um novo arquivo."
+                        : "Renach já anexado. Para substituir, use o botão 'SOLICITAR ACESSO PARA CORREÇÃO' e selecione 'Renach Assinado'."
+                    ) : (
+                      "O cadastro foi finalizado. Agora você pode anexar o Renach Assinado."
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {existingRenach && !canUploadRenach ? (
+                    <div className="flex items-center gap-4 p-3 border rounded-lg bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700">
+                      <CheckCircle2 className="w-8 h-8 text-green-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{existingRenach.fileName}</p>
+                        <p className="text-sm text-muted-foreground">Documento anexado com sucesso</p>
+                      </div>
+                      <a href={`/api/documents/${existingRenach.id}/download`} download={existingRenach.fileName}>
+                        <Button variant="outline" size="icon" data-testid="button-download-renach">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </a>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => setRenachFile(null)}
-                      data-testid="button-remove-renach"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors">
-                    <Upload className="w-8 h-8 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Clique para selecionar o arquivo</span>
-                    <span className="text-xs text-muted-foreground">PDF, JPG, PNG (máx. 5MB)</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        if (file.size > 5 * 1024 * 1024) {
+                  ) : renachFile ? (
+                    <div className="flex items-center gap-4 p-3 border rounded-lg bg-muted/50">
+                      <FileText className="w-8 h-8 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{renachFile.name}</p>
+                        <p className="text-sm text-muted-foreground">{renachFile.type}</p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setRenachFile(null)}
+                        data-testid="button-remove-renach"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors">
+                      <Upload className="w-8 h-8 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Clique para selecionar o arquivo</span>
+                      <span className="text-xs text-muted-foreground">PDF, JPG, PNG (máx. 5MB)</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast({
+                              title: "Arquivo muito grande",
+                              description: "O arquivo deve ter no máximo 5MB",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setRenachFile({
+                              name: file.name,
+                              data: reader.result as string,
+                              type: file.type,
+                            });
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = "";
+                        }}
+                        data-testid="input-renach-file"
+                      />
+                    </label>
+                  )}
+                </CardContent>
+                {(canUploadRenach || !existingRenach) && (
+                  <CardFooter>
+                    <Button
+                      onClick={() => {
+                        if (!renachFile) {
                           toast({
-                            title: "Arquivo muito grande",
-                            description: "O arquivo deve ter no máximo 5MB",
+                            title: "Selecione um arquivo",
+                            description: "Por favor, selecione o arquivo do Renach Assinado",
                             variant: "destructive",
                           });
                           return;
                         }
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          setRenachFile({
-                            name: file.name,
-                            data: reader.result as string,
-                            type: file.type,
-                          });
-                        };
-                        reader.readAsDataURL(file);
-                        e.target.value = "";
+                        setIsUploadingRenach(true);
+                        uploadRenachMutation.mutate({
+                          fileName: renachFile.name,
+                          fileType: renachFile.type,
+                          fileData: renachFile.data,
+                        });
                       }}
-                      data-testid="input-renach-file"
-                    />
-                  </label>
+                      disabled={!renachFile || isUploadingRenach}
+                      className="w-full"
+                      data-testid="button-upload-renach"
+                    >
+                      {isUploadingRenach ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 mr-2" />
+                          {existingRenach ? "Substituir Renach Assinado" : "Enviar Renach Assinado"}
+                        </>
+                      )}
+                    </Button>
+                  </CardFooter>
                 )}
-              </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={() => {
-                    if (!renachFile) {
-                      toast({
-                        title: "Selecione um arquivo",
-                        description: "Por favor, selecione o arquivo do Renach Assinado",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    setIsUploadingRenach(true);
-                    uploadRenachMutation.mutate({
-                      fileName: renachFile.name,
-                      fileType: renachFile.type,
-                      fileData: renachFile.data,
-                    });
-                  }}
-                  disabled={!renachFile || isUploadingRenach}
-                  className="w-full"
-                  data-testid="button-upload-renach"
-                >
-                  {isUploadingRenach ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Enviando...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Enviar Renach Assinado
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
-          )}
+              </Card>
+            );
+          })()}
 
           <Dialog open={!!selectedDoc} onOpenChange={(open) => !open && setSelectedDoc(null)}>
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
@@ -1611,16 +1637,21 @@ export default function SolicitationDetailPage() {
                         <div className="space-y-2">
                           {docsList.map((doc) => {
                             const isOutros = doc.id === "outros";
-                            const isAutoSelected = !isOutros;
+                            const isRenach = doc.id === "renach_assinado";
+                            const hasExistingRenach = documents?.some(d => d.category === "renach_assinado");
+                            const isAutoSelected = !isOutros && !isRenach;
+                            const isRenachSelectable = isRenach && hasExistingRenach;
+                            const isDisabled = isAutoSelected || (isRenach && !hasExistingRenach);
+                            
                             return (
-                              <div key={doc.id} className={`flex items-center space-x-2 border rounded-md px-3 py-2 ${isAutoSelected ? "opacity-80 bg-muted/30" : ""}`}>
+                              <div key={doc.id} className={`flex items-center space-x-2 border rounded-md px-3 py-2 ${isDisabled ? "opacity-80 bg-muted/30" : ""} ${isRenachSelectable ? "border-orange-300 bg-orange-50 dark:bg-orange-950/30" : ""}`}>
                                 <Checkbox 
                                   id={`doc-${doc.id}`}
                                   checked={requestedDocs.includes(doc.id)}
-                                  disabled={isAutoSelected}
-                                  className={isAutoSelected ? "cursor-not-allowed" : ""}
+                                  disabled={isDisabled}
+                                  className={isDisabled ? "cursor-not-allowed" : ""}
                                   onCheckedChange={(checked) => {
-                                    if (isOutros) {
+                                    if (!isDisabled) {
                                       if (checked) {
                                         setRequestedDocs([...requestedDocs, doc.id]);
                                       } else {
@@ -1629,8 +1660,14 @@ export default function SolicitationDetailPage() {
                                     }
                                   }}
                                 />
-                                <label htmlFor={`doc-${doc.id}`} className={`text-sm leading-none ${isAutoSelected ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                                <label htmlFor={`doc-${doc.id}`} className={`text-sm leading-none ${isDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                                   {doc.label}
+                                  {isRenach && hasExistingRenach && (
+                                    <span className="text-xs text-orange-600 ml-2">(Substituir)</span>
+                                  )}
+                                  {isRenach && !hasExistingRenach && (
+                                    <span className="text-xs text-muted-foreground ml-2">(Não anexado ainda)</span>
+                                  )}
                                 </label>
                               </div>
                             );

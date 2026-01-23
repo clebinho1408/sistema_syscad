@@ -745,6 +745,23 @@ export async function registerRoutes(
         });
       }
 
+      // Check if renach_assinado already exists - if so, require access permission
+      const existingDocs = await storage.getDocuments(req.params.id);
+      const existingRenach = existingDocs.find(d => d.category === "renach_assinado");
+      
+      if (existingRenach) {
+        // Renach already uploaded - require access granted with renach_assinado in requested documents
+        const hasRenachAccess = solicitation.accessGranted && 
+          solicitation.accessRequestedDocuments?.includes("renach_assinado");
+        
+        if (!hasRenachAccess) {
+          return res.status(403).json({ 
+            error: "Para substituir o Renach Assinado, é necessário solicitar acesso para correção e aguardar aprovação do operador/admin.",
+            needsAccessRequest: true
+          });
+        }
+      }
+
       const { fileName, fileType, fileData } = req.body;
       if (!fileName || !fileData) {
         return res.status(400).json({ error: "Nome do arquivo e dados são obrigatórios" });
@@ -766,6 +783,8 @@ export async function registerRoutes(
         });
       }
 
+      const isReplacement = !!existingRenach;
+
       // Delete any existing renach_assinado documents for this solicitation
       await storage.deleteDocumentsByCategory(req.params.id, "renach_assinado");
 
@@ -783,11 +802,35 @@ export async function registerRoutes(
         isCompatible: null,
       });
 
-      // Add system message to chat
+      // If this was a replacement with access, revoke access for renach
+      if (isReplacement && solicitation.accessGranted) {
+        const remainingDocs = (solicitation.accessRequestedDocuments || []).filter(d => d !== "renach_assinado");
+        const remainingFields = solicitation.accessRequestedFields || [];
+        
+        // If no more docs/fields to edit, revoke access entirely
+        if (remainingDocs.length === 0 && remainingFields.length === 0) {
+          await storage.updateSolicitation(req.params.id, {
+            accessGranted: false,
+            accessRequestedDocuments: [],
+            accessRequestedFields: [],
+          });
+        } else {
+          // Just remove renach from the list
+          await storage.updateSolicitation(req.params.id, {
+            accessRequestedDocuments: remainingDocs,
+          });
+        }
+      }
+
+      // Add system message to chat notifying operador/admin
+      const chatMessage = isReplacement 
+        ? `[SISTEMA] Renach Assinado SUBSTITUÍDO pela autoescola "${school.nome}". Favor verificar o novo documento.`
+        : `[SISTEMA] Renach Assinado anexado pela autoescola "${school.nome}". Favor verificar o documento.`;
+      
       await storage.createChatMessage({
         solicitationId: req.params.id,
         senderId: req.user!.id,
-        message: `[SISTEMA] Renach Assinado anexado pela autoescola.`,
+        message: chatMessage,
       });
 
       await storage.createAuditLog({
@@ -795,7 +838,9 @@ export async function registerRoutes(
         action: "upload",
         entity: "document",
         entityId: document.id,
-        details: `Renach Assinado anexado ao requerimento`,
+        details: isReplacement 
+          ? `Renach Assinado substituído no requerimento` 
+          : `Renach Assinado anexado ao requerimento`,
       });
 
       res.status(201).json(document);
