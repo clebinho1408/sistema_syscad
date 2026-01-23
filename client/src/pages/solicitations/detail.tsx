@@ -112,6 +112,8 @@ export default function SolicitationDetailPage() {
   const [typingUsers, setTypingUsers] = useState<{ id: string; name: string }[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const popupMessagesEndRef = useRef<HTMLDivElement>(null);
   const previousMessagesCount = useRef<number>(0);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -240,15 +242,11 @@ export default function SolicitationDetailPage() {
 
   useEffect(() => {
     const scrollToBottom = () => {
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-      }
-      if (popupChatContainerRef.current) {
-        popupChatContainerRef.current.scrollTop = popupChatContainerRef.current.scrollHeight;
-      }
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      popupMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
-    scrollToBottom();
-    requestAnimationFrame(scrollToBottom);
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timeoutId);
   }, [messages, isChatPopupOpen, typingUsers]);
 
   useEffect(() => {
@@ -1319,6 +1317,7 @@ export default function SolicitationDetailPage() {
                   {typingUsers.map(u => u.name).join(", ")} digitando...
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </CardContent>
             <CardFooter className="p-4 pt-0 flex-shrink-0">
               <form onSubmit={handleSendMessage} className="flex w-full gap-2">
@@ -1380,6 +1379,7 @@ export default function SolicitationDetailPage() {
                     {typingUsers.map(u => u.name).join(", ")} digitando...
                   </div>
                 )}
+                <div ref={popupMessagesEndRef} />
               </div>
               <div className="p-6 pt-0">
                 <form onSubmit={handleSendMessage} className="flex w-full gap-2">
