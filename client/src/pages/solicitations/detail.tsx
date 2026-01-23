@@ -1806,6 +1806,11 @@ export default function SolicitationDetailPage() {
                   placeholder="Digite uma mensagem..." 
                   value={newMessage}
                   onChange={(e) => handleMessageChange(e.target.value)}
+                  onFocus={() => {
+                    if (chatContainerRef.current) {
+                      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                    }
+                  }}
                   disabled={isFinalized}
                   data-testid="input-chat-message"
                 />
@@ -1868,6 +1873,11 @@ export default function SolicitationDetailPage() {
                     placeholder="Digite uma mensagem..." 
                     value={newMessage}
                     onChange={(e) => handleMessageChange(e.target.value)}
+                    onFocus={() => {
+                      if (popupChatContainerRef.current) {
+                        popupChatContainerRef.current.scrollTop = popupChatContainerRef.current.scrollHeight;
+                      }
+                    }}
                     disabled={solicitation.status === "cadastro_finalizado"}
                     data-testid="input-chat-message-popup"
                   />

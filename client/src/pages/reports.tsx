@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BarChart3, Download, FileText, Clock, CheckCircle2, Building2, Users, Search, History, ChevronDown, ChevronRight } from "lucide-react";
+import { BarChart3, Download, FileText, Clock, CheckCircle2, Building2, Users, Search, History, ChevronDown, ChevronRight, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { StatusBadge, Status } from "@/components/status-badge";
@@ -101,6 +101,7 @@ export default function ReportsPage() {
   const [candidateSearch, setCandidateSearch] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [expandedSchools, setExpandedSchools] = useState<Set<string>>(new Set());
+  const auditPrintRef = useRef<HTMLDivElement>(null);
 
   const { data: stats, isLoading } = useQuery<ReportStats>({
     queryKey: ["/api/reports", { period }],
@@ -171,6 +172,198 @@ export default function ReportsPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handlePrintAudit = () => {
+    if (!auditPrintRef.current || !candidateAudit) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const content = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Histórico de Auditoria - ${candidateAudit.conductor.nome}</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 20mm;
+          }
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #333;
+            padding: 20px;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+          }
+          .header h1 {
+            font-size: 18pt;
+            margin-bottom: 5px;
+          }
+          .header p {
+            color: #666;
+            font-size: 10pt;
+          }
+          .section {
+            margin-bottom: 25px;
+          }
+          .section h2 {
+            font-size: 14pt;
+            margin-bottom: 10px;
+            color: #444;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+          }
+          .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+          }
+          .field {
+            margin-bottom: 8px;
+          }
+          .field-label {
+            font-size: 10pt;
+            color: #666;
+          }
+          .field-value {
+            font-weight: bold;
+          }
+          .audit-item {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 12px;
+            margin-bottom: 10px;
+            page-break-inside: avoid;
+          }
+          .audit-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+          }
+          .audit-action {
+            background: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10pt;
+          }
+          .audit-date {
+            font-size: 10pt;
+            color: #666;
+          }
+          .audit-details {
+            margin-bottom: 5px;
+          }
+          .audit-user {
+            font-size: 10pt;
+            color: #888;
+          }
+          .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10pt;
+            font-weight: bold;
+          }
+          .status-em_analise { background: #dbeafe; color: #1e40af; }
+          .status-pendente_correcao { background: #fef3c7; color: #92400e; }
+          .status-cadastro_finalizado { background: #d1fae5; color: #065f46; }
+          .status-aguardando_penalidade { background: #fed7aa; color: #c2410c; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Histórico de Auditoria</h1>
+          <p>Impresso em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+        </div>
+        
+        <div class="section">
+          <h2>Dados do Candidato</h2>
+          <div class="grid">
+            <div class="field">
+              <div class="field-label">Nome:</div>
+              <div class="field-value">${candidateAudit.conductor.nome}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">CPF:</div>
+              <div class="field-value">${formatCpf(candidateAudit.conductor.cpf)}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Data de Nascimento:</div>
+              <div class="field-value">${candidateAudit.conductor.dataNascimento 
+                ? format(new Date(candidateAudit.conductor.dataNascimento), "dd/MM/yyyy", { locale: ptBR })
+                : "-"}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Cadastrado em:</div>
+              <div class="field-value">${format(new Date(candidateAudit.conductor.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h2>Solicitação</h2>
+          <div class="grid">
+            <div class="field">
+              <div class="field-label">Tipo:</div>
+              <div class="field-value">${candidateAudit.solicitation.type}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Status Atual:</div>
+              <div class="field-value">
+                <span class="status-badge status-${candidateAudit.solicitation.status}">${
+                  candidateAudit.solicitation.status === 'em_analise' ? 'Em Análise' :
+                  candidateAudit.solicitation.status === 'pendente_correcao' ? 'Pendente de Correção' :
+                  candidateAudit.solicitation.status === 'cadastro_finalizado' ? 'Cadastro Finalizado' :
+                  candidateAudit.solicitation.status === 'aguardando_penalidade' ? 'Aguardando Penalidade' :
+                  candidateAudit.solicitation.status
+                }</span>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-label">Mensagens no Chat:</div>
+              <div class="field-value">${candidateAudit.messagesCount}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h2>Histórico de Ações</h2>
+          ${candidateAudit.auditLogs.length > 0 
+            ? candidateAudit.auditLogs.map(log => `
+              <div class="audit-item">
+                <div class="audit-header">
+                  <span class="audit-action">${getActionLabel(log.action)}</span>
+                  <span class="audit-date">${format(new Date(log.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                </div>
+                <div class="audit-details">${log.details}</div>
+                <div class="audit-user">Por: ${log.userName}</div>
+              </div>
+            `).join('')
+            : '<p>Nenhum registro de auditoria encontrado</p>'
+          }
+        </div>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   };
 
   return (
@@ -712,11 +905,22 @@ export default function ReportsPage() {
 
       <Dialog open={!!selectedCandidate} onOpenChange={(open) => !open && setSelectedCandidate(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh]">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between gap-4">
             <DialogTitle className="flex items-center gap-2">
               <History className="w-5 h-5" />
               Histórico de Auditoria
             </DialogTitle>
+            {candidateAudit && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handlePrintAudit}
+                data-testid="button-print-audit"
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Imprimir A4
+              </Button>
+            )}
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">
             {isLoadingAudit ? (
