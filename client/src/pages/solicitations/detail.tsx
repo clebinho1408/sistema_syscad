@@ -41,7 +41,11 @@ import {
   ShieldAlert,
   ShieldX,
   Eye,
+  Trash2,
+  ArrowRightLeft,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { DrivingSchool } from "@shared/schema";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { SolicitationWithDetails, ChatMessageWithSender, Document, SolicitationType } from "@shared/schema";
@@ -116,6 +120,9 @@ export default function SolicitationDetailPage() {
   const [typingUsers, setTypingUsers] = useState<{ id: string; name: string }[]>([]);
   const [renachFile, setRenachFile] = useState<{ name: string; data: string; type: string } | null>(null);
   const [isUploadingRenach, setIsUploadingRenach] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [selectedDrivingSchoolId, setSelectedDrivingSchoolId] = useState<string>("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const popupChatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -522,6 +529,46 @@ export default function SolicitationDetailPage() {
     setPenaltyMutation.mutate({ penaltyReleaseDate });
   };
 
+  // Query driving schools for transfer (admin only)
+  const { data: drivingSchools } = useQuery<DrivingSchool[]>({
+    queryKey: ["/api/driving-schools"],
+    enabled: user?.role === "admin",
+  });
+
+  // Delete solicitation mutation (admin only)
+  const deleteSolicitationMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", `/api/solicitations/${params?.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Solicitação excluída com sucesso!" });
+      setIsDeleteDialogOpen(false);
+      window.location.href = "/solicitations";
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao excluir solicitação", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Transfer solicitation mutation (admin only)
+  const transferSolicitationMutation = useMutation({
+    mutationFn: async (newDrivingSchoolId: string) => {
+      return apiRequest("POST", `/api/solicitations/${params?.id}/transfer`, { newDrivingSchoolId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/solicitations"] });
+      toast({ title: "Candidato transferido com sucesso!" });
+      setIsTransferDialogOpen(false);
+      setSelectedDrivingSchoolId("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao transferir candidato", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
@@ -748,6 +795,114 @@ export default function SolicitationDetailPage() {
                       <Button onClick={handlePenalty} disabled={setPenaltyMutation.isPending}>
                         {setPenaltyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                         Confirmar
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Admin-only actions: Delete and Transfer */}
+        {user?.role === "admin" && (
+          <Card className="mb-6 border-red-200 dark:border-red-900">
+            <CardHeader className="py-3 border-b bg-red-50/50 dark:bg-red-950/30">
+              <CardTitle className="text-lg font-bold flex items-center gap-2 text-red-700 dark:text-red-400">
+                <Trash2 className="w-5 h-5" />
+                Ações Administrativas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Transfer Dialog */}
+                <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="outline"
+                      className="w-full"
+                      data-testid="button-transfer"
+                    >
+                      <ArrowRightLeft className="w-4 h-4 mr-2" />
+                      Transferir Candidato
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Transferir Candidato</DialogTitle>
+                      <DialogDescription>
+                        Selecione a autoescola de destino para transferir este candidato.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <label className="block text-sm font-medium mb-2">Autoescola de Destino</label>
+                      <Select value={selectedDrivingSchoolId} onValueChange={setSelectedDrivingSchoolId}>
+                        <SelectTrigger data-testid="select-driving-school">
+                          <SelectValue placeholder="Selecione uma autoescola" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {drivingSchools?.filter(ds => ds.id !== solicitation.drivingSchoolId && ds.isActive).map((ds) => (
+                            <SelectItem key={ds.id} value={ds.id}>
+                              {ds.nome}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Autoescola atual: <strong>{solicitation.drivingSchool?.nome}</strong>
+                      </p>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)}>Cancelar</Button>
+                      <Button 
+                        onClick={() => transferSolicitationMutation.mutate(selectedDrivingSchoolId)} 
+                        disabled={transferSolicitationMutation.isPending || !selectedDrivingSchoolId}
+                      >
+                        {transferSolicitationMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Transferir
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Delete Dialog */}
+                <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="destructive"
+                      className="w-full"
+                      data-testid="button-delete-solicitation"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Excluir Solicitação
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Excluir Solicitação</DialogTitle>
+                      <DialogDescription>
+                        Esta ação é irreversível. Todos os dados, documentos e mensagens desta solicitação serão excluídos permanentemente.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 p-4 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800">
+                      <p className="text-sm text-red-700 dark:text-red-400 font-medium">
+                        Você está prestes a excluir:
+                      </p>
+                      <ul className="text-sm text-red-600 dark:text-red-500 mt-2 list-disc list-inside">
+                        <li>Solicitação: {solicitation.type}</li>
+                        <li>Candidato: {solicitation.conductor?.nomeCompleto}</li>
+                        <li>CPF: {solicitation.conductor?.cpf}</li>
+                      </ul>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancelar</Button>
+                      <Button 
+                        variant="destructive"
+                        onClick={() => deleteSolicitationMutation.mutate()} 
+                        disabled={deleteSolicitationMutation.isPending}
+                      >
+                        {deleteSolicitationMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Excluir Permanentemente
                       </Button>
                     </DialogFooter>
                   </DialogContent>

@@ -487,7 +487,7 @@ export async function registerRoutes(
         action: "transfer",
         entity: "solicitation",
         entityId: req.params.id,
-        details: `Candidato transferido de "${oldDrivingSchool?.nomeFantasia}" para "${newDrivingSchool.nomeFantasia}"`,
+        details: `Candidato transferido de "${oldDrivingSchool?.nome}" para "${newDrivingSchool.nome}"`,
       });
 
       const fullSolicitation = await storage.getSolicitation(req.params.id);
