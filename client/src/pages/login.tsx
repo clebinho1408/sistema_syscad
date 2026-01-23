@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Car, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 
 export default function LoginPage() {
@@ -51,9 +51,6 @@ export default function LoginPage() {
       <main className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-              <Car className="w-8 h-8 text-primary" />
-            </div>
             <h2 className="text-2xl font-bold tracking-tight">Bem-vindo ao Sistema</h2>
             <p className="text-muted-foreground">
               Gerencie solicitações de cadastro e alterações cadastrais
