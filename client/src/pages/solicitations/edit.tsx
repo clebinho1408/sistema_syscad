@@ -218,10 +218,14 @@ export default function SolicitationEditPage() {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (selectedFile.size > 5 * 1024 * 1024) {
+    const isPDF = selectedFile.type === 'application/pdf';
+    const maxSize = isPDF ? 3 * 1024 * 1024 : 5 * 1024 * 1024;
+    const maxSizeLabel = isPDF ? '3MB' : '5MB';
+    
+    if (selectedFile.size > maxSize) {
       toast({
         title: "Arquivo muito grande",
-        description: `${selectedFile.name} excede o limite de 5MB`,
+        description: `${selectedFile.name} excede o limite de ${maxSizeLabel}`,
         variant: "destructive",
       });
       return;
@@ -655,7 +659,7 @@ export default function SolicitationEditPage() {
                           >
                             Clique para fazer upload
                           </label>
-                          <p className="text-xs text-muted-foreground mt-1">PDF, JPG ou PNG (máx. 5MB)</p>
+                          <p className="text-xs text-muted-foreground mt-1">PDF (máx. 3MB), JPG ou PNG (máx. 5MB)</p>
                         </div>
                       )}
                     </div>

@@ -102,6 +102,7 @@ export default function SolicitationDetailPage() {
   const [requestedFields, setRequestedFields] = useState<string[]>([]);
   const [requestedDocs, setRequestedDocs] = useState<string[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [imageZoom, setImageZoom] = useState(100);
   const [copiedFields, setCopiedFields] = useState<Set<string>>(new Set());
   const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
@@ -1371,7 +1372,7 @@ export default function SolicitationDetailPage() {
                     <label className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors">
                       <Upload className="w-8 h-8 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">Clique para selecionar o arquivo</span>
-                      <span className="text-xs text-muted-foreground">PDF, JPG, PNG (máx. 5MB)</span>
+                      <span className="text-xs text-muted-foreground">PDF (máx. 3MB), JPG, PNG (máx. 5MB)</span>
                       <input
                         type="file"
                         className="hidden"
@@ -1379,10 +1380,13 @@ export default function SolicitationDetailPage() {
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-                          if (file.size > 5 * 1024 * 1024) {
+                          const isPDF = file.type === 'application/pdf';
+                          const maxSize = isPDF ? 3 * 1024 * 1024 : 5 * 1024 * 1024;
+                          const maxSizeLabel = isPDF ? '3MB' : '5MB';
+                          if (file.size > maxSize) {
                             toast({
                               title: "Arquivo muito grande",
-                              description: "O arquivo deve ter no máximo 5MB",
+                              description: `O arquivo deve ter no máximo ${maxSizeLabel}`,
                               variant: "destructive",
                             });
                             return;
@@ -1444,21 +1448,63 @@ export default function SolicitationDetailPage() {
             );
           })()}
 
-          <Dialog open={!!selectedDoc} onOpenChange={(open) => !open && setSelectedDoc(null)}>
+          <Dialog open={!!selectedDoc} onOpenChange={(open) => { if (!open) { setSelectedDoc(null); setImageZoom(100); } }}>
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
-              <DialogHeader className="p-4 border-b flex flex-row items-center justify-between">
-                <div>
+              <DialogHeader className="p-4 border-b flex flex-row items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
                   <DialogTitle>Detalhes do Documento</DialogTitle>
-                  <DialogDescription>{selectedDoc?.fileName}</DialogDescription>
+                  <DialogDescription className="truncate">{selectedDoc?.fileName}</DialogDescription>
                 </div>
+                {selectedDoc?.fileType.startsWith('image/') && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setImageZoom(Math.max(25, imageZoom - 25))}
+                      disabled={imageZoom <= 25}
+                      data-testid="button-zoom-out"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </Button>
+                    <span className="text-sm font-medium w-12 text-center">{imageZoom}%</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setImageZoom(Math.min(300, imageZoom + 25))}
+                      disabled={imageZoom >= 300}
+                      data-testid="button-zoom-in"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setImageZoom(100)}
+                      data-testid="button-zoom-reset"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </DialogHeader>
-              <div className="flex-1 overflow-auto bg-muted/30 flex items-center justify-center p-4">
+              <div className="flex-1 overflow-auto bg-muted/30 flex items-start justify-center p-4">
                 {selectedDoc?.fileType.startsWith('image/') ? (
-                  <img 
-                    src={selectedDoc.fileData ?? undefined} 
-                    alt={selectedDoc.fileName}
-                    className="max-w-full h-auto shadow-lg"
-                  />
+                  <div 
+                    className="flex items-center justify-center min-h-full"
+                    style={{ minWidth: imageZoom > 100 ? 'fit-content' : '100%' }}
+                  >
+                    <img 
+                      src={selectedDoc.fileData ?? undefined} 
+                      alt={selectedDoc.fileName}
+                      className="shadow-lg transition-transform duration-200"
+                      style={{ 
+                        width: `${imageZoom}%`,
+                        maxWidth: imageZoom <= 100 ? '100%' : 'none',
+                        height: 'auto',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
                 ) : selectedDoc?.fileType === 'application/pdf' ? (
                   <iframe 
                     src={selectedDoc.fileData ?? undefined} 

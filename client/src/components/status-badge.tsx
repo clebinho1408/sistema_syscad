@@ -34,6 +34,22 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const config = statusConfig[status];
+  
+  if (!config) {
+    return (
+      <Badge
+        variant="outline"
+        className={cn(
+          "gap-1.5 font-medium border bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 border-gray-200 dark:border-gray-800",
+          className
+        )}
+      >
+        <Clock className="w-3.5 h-3.5" />
+        {status || "Desconhecido"}
+      </Badge>
+    );
+  }
+  
   const Icon = config.icon;
 
   return (

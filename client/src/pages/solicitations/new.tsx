@@ -506,10 +506,14 @@ export default function NewSolicitationPage() {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (selectedFile.size > 5 * 1024 * 1024) {
+    const isPDF = selectedFile.type === 'application/pdf';
+    const maxSize = isPDF ? 3 * 1024 * 1024 : 5 * 1024 * 1024;
+    const maxSizeLabel = isPDF ? '3MB' : '5MB';
+    
+    if (selectedFile.size > maxSize) {
       toast({
         title: "Arquivo muito grande",
-        description: `${selectedFile.name} excede o limite de 5MB`,
+        description: `${selectedFile.name} excede o limite de ${maxSizeLabel}`,
         variant: "destructive",
       });
       return;
@@ -1261,7 +1265,7 @@ export default function NewSolicitationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Documentação</CardTitle>
-              <CardDescription>Anexe os documentos necessários digitalizados (máximo 5MB por arquivo)</CardDescription>
+              <CardDescription>Anexe os documentos necessários digitalizados (PDF máx. 3MB, imagens máx. 5MB)</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               {DOCUMENT_CATEGORIES.map((category) => (
