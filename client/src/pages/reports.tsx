@@ -118,7 +118,7 @@ export default function ReportsPage() {
 
   const { data: searchResults, isLoading: isSearching } = useQuery<CandidateSearch[]>({
     queryKey: ["/api/reports/candidates-search", { search: candidateSearch }],
-    enabled: activeTab === "audit" && candidateSearch.length >= 2,
+    enabled: activeTab === "audit" && candidateSearch.replace(/[.\-]/g, "").length >= 3,
   });
 
   const { data: candidateAudit, isLoading: isLoadingAudit } = useQuery<CandidateAudit>({
@@ -162,8 +162,40 @@ export default function ReportsPage() {
     return labels[action] || action;
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          .no-print, 
+          header, 
+          nav, 
+          aside,
+          button,
+          [data-testid*="button"],
+          [data-testid*="select"],
+          [role="tablist"] {
+            display: none !important;
+          }
+          .print-only {
+            display: block !important;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+          }
+          .card {
+            border: 1px solid #eee !important;
+            box-shadow: none !important;
+          }
+          .space-y-6 > * + * {
+            margin-top: 1.5rem !important;
+          }
+        }
+      `}} />
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
@@ -191,6 +223,10 @@ export default function ReportsPage() {
             <Button variant="outline" onClick={() => handleExport("pdf")} data-testid="button-export-pdf">
               <Download className="w-4 h-4 mr-2" />
               PDF
+            </Button>
+            <Button variant="outline" onClick={handlePrint} data-testid="button-print">
+              <FileText className="w-4 h-4 mr-2" />
+              Imprimir
             </Button>
           </div>
         )}

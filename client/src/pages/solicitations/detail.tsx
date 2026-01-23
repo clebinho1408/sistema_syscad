@@ -1061,7 +1061,7 @@ export default function SolicitationDetailPage() {
               {canEdit && (
                 <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" data-testid="button-open-full-data">
+                    <Button variant="outline" size="sm" data-testid="button-open-full-data" onClick={(e) => e.preventDefault()}>
                       <ClipboardList className="w-4 h-4 mr-2" />
                       Abrir Dados do Candidato/Condutor
                     </Button>

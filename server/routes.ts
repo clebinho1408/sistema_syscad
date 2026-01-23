@@ -1906,11 +1906,15 @@ export async function registerRoutes(
       
       let results = solicitations;
       if (search && typeof search === "string" && search.trim()) {
-        const searchLower = search.toLowerCase();
-        results = solicitations.filter(sol => 
-          sol.conductor.nomeCompleto?.toLowerCase().includes(searchLower) ||
-          sol.conductor.cpf?.includes(search)
-        );
+        const searchRaw = search.trim();
+        const searchClean = searchRaw.replace(/[.\-]/g, "");
+        const searchLower = searchRaw.toLowerCase();
+        
+        results = solicitations.filter(sol => {
+          const nameMatch = sol.conductor.nomeCompleto?.toLowerCase().includes(searchLower);
+          const cpfMatch = sol.conductor.cpf?.replace(/[.\-]/g, "").includes(searchClean);
+          return nameMatch || cpfMatch;
+        });
       }
 
       res.json(results.map(sol => ({
