@@ -12,6 +12,7 @@ import { FileText, Plus, Search, Filter, Calendar, MessageSquare, ChevronDown, C
 import type { SolicitationWithDetails, SolicitationType } from "@shared/schema";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
