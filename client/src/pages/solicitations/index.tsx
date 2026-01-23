@@ -66,9 +66,9 @@ export default function SolicitationsPage() {
       const matchesSearch =
         s.conductor.nomeCompleto.toLowerCase().includes(search.toLowerCase()) ||
         s.conductor.cpf.includes(search);
-      const matchesStatus = s.status === status;
+      const matchesStatus = statusFilter === "all" || s.status === statusFilter;
       const matchesType = typeFilter === "all" || s.type === typeFilter;
-      return matchesSearch && matchesStatus && matchesType;
+      return matchesSearch && matchesStatus && matchesType && s.status === status;
     }) || [];
   };
 
@@ -164,29 +164,40 @@ export default function SolicitationsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou CPF..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-                data-testid="input-search"
-              />
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome ou CPF..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search"
+                />
+              </div>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger data-testid="select-type-filter">
+                  <SelectValue placeholder="Requerimento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Requerimentos</SelectItem>
+                  {solicitationTypes?.map((type) => (
+                    <SelectItem key={type.id} value={type.value}>{type.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger data-testid="select-status-filter">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Status</SelectItem>
+                  {statusSections.map((status) => (
+                    <SelectItem key={status.id} value={status.id}>{status.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger data-testid="select-type-filter">
-                <SelectValue placeholder="Requerimento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os tipos</SelectItem>
-                {solicitationTypes?.map((type) => (
-                  <SelectItem key={type.id} value={type.value}>{type.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </CardContent>
       </Card>
 
