@@ -75,7 +75,7 @@ export default function SolicitationsPage() {
   const statusSections = [
     { id: "em_analise", label: "Em Análise", color: "blue" },
     { id: "pendente_correcao", label: "Pendente de Correção", color: "orange" },
-    { id: "aguardando_penalidade", label: "Aguardando Penalidade", color: "purple" },
+    { id: "aguardando_penalidade", label: "Aguardando Penalidade", color: "red" },
     { id: "cadastro_finalizado", label: "Cadastro Finalizado", color: "green" },
   ];
 
