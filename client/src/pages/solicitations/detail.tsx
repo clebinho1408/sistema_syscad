@@ -242,11 +242,15 @@ export default function SolicitationDetailPage() {
 
   useEffect(() => {
     const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      popupMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+      popupMessagesEndRef.current?.scrollIntoView({ behavior: "instant" });
     };
-    const timeoutId = setTimeout(scrollToBottom, 100);
-    return () => clearTimeout(timeoutId);
+    if (messages && messages.length > 0) {
+      scrollToBottom();
+      // Second attempt to handle layout shifts
+      const timeoutId = setTimeout(scrollToBottom, 250);
+      return () => clearTimeout(timeoutId);
+    }
   }, [messages, isChatPopupOpen, typingUsers]);
 
   useEffect(() => {

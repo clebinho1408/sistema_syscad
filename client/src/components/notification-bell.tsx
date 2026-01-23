@@ -9,21 +9,32 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/auth";
 
 interface UnreadCount {
   solicitationId: string;
   solicitationType: string;
   conductorName: string;
+  drivingSchoolName: string;
   unreadCount: number;
 }
 
 export function NotificationBell() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
 
   const { data: unreadCounts } = useQuery<UnreadCount[]>({
     queryKey: ["/api/chat/unread-counts"],
     refetchInterval: 10000,
   });
+
+  const { data: solicitationTypes } = useQuery<any[]>({
+    queryKey: ["/api/solicitation-types"],
+  });
+
+  const getTypeLabel = (typeValue: string) => {
+    return solicitationTypes?.find(t => t.value === typeValue)?.label || typeValue;
+  };
 
   const totalUnread = unreadCounts?.reduce((sum, item) => sum + item.unreadCount, 0) || 0;
 
@@ -67,7 +78,12 @@ export function NotificationBell() {
             >
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="font-medium truncate">{item.conductorName}</span>
-                <span className="text-xs text-muted-foreground truncate">{item.solicitationType}</span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-muted-foreground truncate">{getTypeLabel(item.solicitationType)}</span>
+                  {(user?.role === "admin" || user?.role === "operador") && (
+                    <span className="text-[10px] text-primary/70 font-semibold truncate uppercase">{item.drivingSchoolName}</span>
+                  )}
+                </div>
               </div>
               <Badge variant="secondary" className="shrink-0">
                 {item.unreadCount} {item.unreadCount === 1 ? "nova" : "novas"}

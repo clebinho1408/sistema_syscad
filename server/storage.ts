@@ -285,12 +285,13 @@ export class DatabaseStorage implements IStorage {
     return message;
   }
 
-  async getUnreadCounts(userId: string): Promise<{ solicitationId: string; solicitationType: string; conductorName: string; unreadCount: number }[]> {
+  async getUnreadCounts(userId: string): Promise<{ solicitationId: string; solicitationType: string; conductorName: string; drivingSchoolName: string; unreadCount: number }[]> {
     const result = await db.execute(sql`
       SELECT 
         cm.solicitation_id as "solicitationId",
         s.type as "solicitationType",
         c.nome_completo as "conductorName",
+        ds.nome as "drivingSchoolName",
         COUNT(*) as "unreadCount"
       FROM chat_messages cm
       LEFT JOIN chat_read_status crs 
@@ -298,14 +299,16 @@ export class DatabaseStorage implements IStorage {
         AND crs.user_id = ${userId}
       JOIN solicitations s ON s.id = cm.solicitation_id
       JOIN conductors c ON c.id = s.conductor_id
+      JOIN driving_schools ds ON ds.id = s.driving_school_id
       WHERE cm.sender_id != ${userId}
         AND (crs.last_read_at IS NULL OR cm.created_at > crs.last_read_at)
-      GROUP BY cm.solicitation_id, s.type, c.nome_completo
+      GROUP BY cm.solicitation_id, s.type, c.nome_completo, ds.nome
     `);
     return result.rows.map((r: any) => ({
       solicitationId: r.solicitationId,
       solicitationType: r.solicitationType,
       conductorName: r.conductorName,
+      drivingSchoolName: r.drivingSchoolName,
       unreadCount: parseInt(r.unreadCount, 10),
     }));
   }
