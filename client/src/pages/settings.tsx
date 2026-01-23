@@ -1,119 +1,97 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, FileText, Shield, Bell } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Settings, FileText, Shield, Info, Database } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useQuery } from "@tanstack/react-query";
 
 export default function SettingsPage() {
+  // Check OCR availability
+  const { data: ocrStatus } = useQuery<{ available: boolean }>({
+    queryKey: ["/api/documents/ocr-status"],
+  });
+
+  // Document categories used in the system
+  const documentCategories = [
+    { id: "documento_identificacao", label: "Documento de Identificação", description: "RG, CNH ou outro documento com foto" },
+    { id: "comprovante_residencia", label: "Comprovante de Residência", description: "Conta de luz, água, telefone ou similar" },
+    { id: "renach_assinado", label: "Renach Assinado", description: "Formulário RENACH com assinatura do candidato" },
+  ];
+
+  // System rules that are actually implemented
+  const systemRules = [
+    { 
+      id: "chat-block", 
+      label: "Chat bloqueado após aprovação", 
+      description: "Mensagens são bloqueadas apenas quando o status é 'Aprovada'",
+      status: true 
+    },
+    { 
+      id: "cpf-unique", 
+      label: "CPF único no sistema", 
+      description: "Cada CPF só pode ser cadastrado uma vez em todo o sistema",
+      status: true 
+    },
+    { 
+      id: "visual-analysis", 
+      label: "Análise visual de documentos de identificação", 
+      description: "Operadores podem analisar qualidade visual (conservação, rasuras, cortes) de documentos de identificação",
+      status: true 
+    },
+    { 
+      id: "authenticity-check", 
+      label: "Verificação de autenticidade", 
+      description: "Operadores podem verificar autenticidade de comprovantes de residência via IA",
+      status: true 
+    },
+  ];
+
+  // Solicitation statuses in the system
+  const solicitationStatuses = [
+    { id: "em_analise", label: "Em Análise", description: "Solicitação aguardando análise do operador", color: "bg-blue-500" },
+    { id: "pendente_correcao", label: "Pendente de Correção", description: "Aguardando correção pela autoescola", color: "bg-yellow-500" },
+    { id: "cadastro_finalizado", label: "Cadastro Finalizado", description: "Processamento concluído, chat ainda habilitado", color: "bg-emerald-500" },
+    { id: "aprovada", label: "Aprovada", description: "Totalmente aprovada, chat desabilitado", color: "bg-green-600" },
+    { id: "aguardando_penalidade", label: "Aguardando Penalidade", description: "Aguardando liberação de penalidade", color: "bg-orange-500" },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">
-          Gerencie as configurações do sistema
+          Informações sobre configurações e regras do sistema
         </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Document Categories */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Documentos Obrigatórios
+              Categorias de Documentos
             </CardTitle>
             <CardDescription>
-              Configure quais documentos são obrigatórios por requerimento
+              Tipos de documentos aceitos pelo sistema
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">Novo Cadastro</h4>
-              <div className="grid gap-2 pl-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="doc-rg">RG ou CNH</Label>
-                  <Switch id="doc-rg" defaultChecked data-testid="switch-doc-rg" />
+            {documentCategories.map((doc, index) => (
+              <div key={doc.id}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium text-sm">{doc.label}</p>
+                    <p className="text-xs text-muted-foreground">{doc.description}</p>
+                  </div>
+                  <Badge variant="outline" className="text-xs">Obrigatório</Badge>
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="doc-cpf">CPF</Label>
-                  <Switch id="doc-cpf" defaultChecked data-testid="switch-doc-cpf" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="doc-residencia">Comprovante de Residência</Label>
-                  <Switch id="doc-residencia" defaultChecked data-testid="switch-doc-residencia" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="doc-foto">Foto 3x4</Label>
-                  <Switch id="doc-foto" defaultChecked data-testid="switch-doc-foto" />
-                </div>
+                {index < documentCategories.length - 1 && <Separator className="mt-3" />}
               </div>
-            </div>
-            <Separator />
-            <div className="space-y-3">
-              <h4 className="font-medium text-sm">Alteração de Dados</h4>
-              <div className="grid gap-2 pl-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="doc-alt-rg">RG ou CNH</Label>
-                  <Switch id="doc-alt-rg" defaultChecked data-testid="switch-alt-rg" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="doc-alt-comprovante">Documento comprobatório</Label>
-                  <Switch id="doc-alt-comprovante" defaultChecked data-testid="switch-alt-comprovante" />
-                </div>
-              </div>
-            </div>
-            <Button className="w-full mt-4" data-testid="button-save-docs">
-              Salvar Configurações
-            </Button>
+            ))}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="w-5 h-5" />
-              Notificações
-            </CardTitle>
-            <CardDescription>
-              Configure as notificações por e-mail
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="notify-new">Nova solicitação</Label>
-                <p className="text-sm text-muted-foreground">
-                  Notificar operadores quando novas solicitações chegarem
-                </p>
-              </div>
-              <Switch id="notify-new" defaultChecked data-testid="switch-notify-new" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="notify-status">Mudança de status</Label>
-                <p className="text-sm text-muted-foreground">
-                  Notificar autoescolas sobre mudanças de status
-                </p>
-              </div>
-              <Switch id="notify-status" defaultChecked data-testid="switch-notify-status" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="notify-chat">Novas mensagens</Label>
-                <p className="text-sm text-muted-foreground">
-                  Notificar sobre novas mensagens no chat
-                </p>
-              </div>
-              <Switch id="notify-chat" data-testid="switch-notify-chat" />
-            </div>
-            <Button className="w-full mt-4" data-testid="button-save-notifications">
-              Salvar Configurações
-            </Button>
-          </CardContent>
-        </Card>
-
+        {/* System Rules */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -121,82 +99,154 @@ export default function SettingsPage() {
               Regras do Sistema
             </CardTitle>
             <CardDescription>
-              Configure regras gerais do sistema
+              Regras de negócio implementadas
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="rule-block-chat">Bloquear chat após finalização</Label>
-                <p className="text-sm text-muted-foreground">
-                  Impedir envio de mensagens em solicitações finalizadas
-                </p>
+            {systemRules.map((rule, index) => (
+              <div key={rule.id}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{rule.label}</p>
+                    <p className="text-xs text-muted-foreground">{rule.description}</p>
+                  </div>
+                  <Badge 
+                    variant={rule.status ? "default" : "secondary"} 
+                    className="text-xs shrink-0"
+                  >
+                    {rule.status ? "Ativo" : "Inativo"}
+                  </Badge>
+                </div>
+                {index < systemRules.length - 1 && <Separator className="mt-3" />}
               </div>
-              <Switch id="rule-block-chat" defaultChecked data-testid="switch-block-chat" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="rule-require-docs">Exigir todos os documentos</Label>
-                <p className="text-sm text-muted-foreground">
-                  Bloquear análise sem todos os documentos obrigatórios
-                </p>
-              </div>
-              <Switch id="rule-require-docs" defaultChecked data-testid="switch-require-docs" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="rule-justify">Justificativa obrigatória</Label>
-                <p className="text-sm text-muted-foreground">
-                  Exigir justificativa para reprovação
-                </p>
-              </div>
-              <Switch id="rule-justify" defaultChecked data-testid="switch-justify" />
-            </div>
-            <Button className="w-full mt-4" data-testid="button-save-rules">
-              Salvar Configurações
-            </Button>
+            ))}
           </CardContent>
         </Card>
 
+        {/* Solicitation Statuses */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Sistema
+              <Info className="w-5 h-5" />
+              Status de Solicitações
             </CardTitle>
             <CardDescription>
-              Informações e manutenção do sistema
+              Estados possíveis para solicitações
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-2">
+            {solicitationStatuses.map((status, index) => (
+              <div key={status.id}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-3 h-3 rounded-full ${status.color} mt-1 shrink-0`} />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{status.label}</p>
+                    <p className="text-xs text-muted-foreground">{status.description}</p>
+                  </div>
+                </div>
+                {index < solicitationStatuses.length - 1 && <Separator className="mt-3" />}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* System Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5" />
+              Sistema
+            </CardTitle>
+            <CardDescription>
+              Informações do sistema
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Versão do Sistema</span>
-                <span className="font-medium">1.0.0</span>
+                <span className="font-medium">1.2.0</span>
               </div>
+              <Separator />
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Última atualização</span>
-                <span className="font-medium">18/01/2026</span>
+                <span className="font-medium">23/01/2026</span>
               </div>
+              <Separator />
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Status do banco</span>
-                <span className="font-medium text-emerald-600">Conectado</span>
+                <span className="text-muted-foreground">Banco de Dados</span>
+                <Badge variant="default" className="text-xs bg-emerald-600">Conectado</Badge>
               </div>
-            </div>
-            <Separator />
-            <div className="space-y-2">
-              <Button variant="outline" className="w-full" data-testid="button-clear-cache">
-                Limpar Cache
-              </Button>
-              <Button variant="outline" className="w-full" data-testid="button-backup">
-                Fazer Backup
-              </Button>
+              <Separator />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">OCR (Leitura de Documentos)</span>
+                <Badge 
+                  variant={ocrStatus?.available ? "default" : "secondary"} 
+                  className={`text-xs ${ocrStatus?.available ? 'bg-emerald-600' : ''}`}
+                >
+                  {ocrStatus?.available ? "Disponível" : "Não configurado"}
+                </Badge>
+              </div>
+              <Separator />
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Armazenamento de Arquivos</span>
+                <Badge variant="default" className="text-xs bg-emerald-600">Object Storage</Badge>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* User Roles Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            Perfis de Usuário
+          </CardTitle>
+          <CardDescription>
+            Níveis de acesso disponíveis no sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge className="bg-blue-600">Autoescola</Badge>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• Criar e acompanhar solicitações</li>
+                <li>• Enviar documentos</li>
+                <li>• Comunicar-se via chat</li>
+                <li>• Solicitar alterações de dados</li>
+              </ul>
+            </div>
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge className="bg-purple-600">Operador</Badge>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• Analisar solicitações</li>
+                <li>• Atualizar status</li>
+                <li>• Verificar autenticidade de documentos</li>
+                <li>• Comunicar-se via chat</li>
+              </ul>
+            </div>
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge className="bg-red-600">Admin</Badge>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• Gerenciar usuários e autoescolas</li>
+                <li>• Gerenciar tipos de solicitação</li>
+                <li>• Transferir candidatos entre autoescolas</li>
+                <li>• Excluir solicitações</li>
+                <li>• Acesso a relatórios e auditoria</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
