@@ -23,15 +23,12 @@ import {
 import {
   LayoutDashboard,
   FileText,
-  Users,
   Building2,
   Settings,
   BarChart3,
   LogOut,
   ChevronUp,
   ClipboardList,
-  History,
-  ListOrdered,
 } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 
@@ -64,8 +61,6 @@ export function AppSidebar() {
         { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
         { title: "Solicitações", url: "/solicitations", icon: FileText },
         { title: "Autoescolas", url: "/driving-schools", icon: Building2 },
-        { title: "Usuários", url: "/users", icon: Users },
-        { title: "Tipos de Requerimento", url: "/solicitation-types", icon: ListOrdered },
         { title: "Relatórios", url: "/reports", icon: BarChart3 },
         { title: "Configurações", url: "/settings", icon: Settings },
       ];

@@ -17,6 +17,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUsers(): Promise<User[]>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
 
   getDrivingSchool(id: string): Promise<DrivingSchool | undefined>;
   getDrivingSchoolByUserId(userId: string): Promise<DrivingSchool | undefined>;
@@ -95,6 +96,11 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
     const [user] = await db.update(users).set(data).where(eq(users.id, id)).returning();
     return user || undefined;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id)).returning();
+    return result.length > 0;
   }
 
   async getDrivingSchool(id: string): Promise<DrivingSchool | undefined> {

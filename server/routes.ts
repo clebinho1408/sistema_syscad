@@ -1506,23 +1506,75 @@ export async function registerRoutes(
 
   app.patch("/api/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
     try {
-      const { isActive } = req.body;
-      const updated = await storage.updateUser(req.params.id, { isActive });
+      const { isActive, name, email, role } = req.body;
+      
+      // Build update data
+      const updateData: any = {};
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (name !== undefined) updateData.name = name;
+      if (email !== undefined) updateData.email = email;
+      if (role !== undefined) updateData.role = role;
+      
+      const updated = await storage.updateUser(req.params.id, updateData);
       
       if (!updated) {
         return res.status(404).json({ message: "Usuário não encontrado" });
       }
+
+      // Build audit log details
+      const changes: string[] = [];
+      if (isActive !== undefined) changes.push(isActive ? "desbloqueado" : "bloqueado");
+      if (name !== undefined) changes.push(`nome: ${name}`);
+      if (email !== undefined) changes.push(`email: ${email}`);
+      if (role !== undefined) changes.push(`papel: ${role}`);
 
       await storage.createAuditLog({
         userId: req.user!.id,
         action: "update",
         entity: "user",
         entityId: req.params.id,
-        details: `Usuário ${isActive ? "desbloqueado" : "bloqueado"}`,
+        details: `Usuário atualizado: ${changes.join(", ")}`,
       });
 
       const { password, ...userWithoutPassword } = updated;
       res.json(userWithoutPassword);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+
+      // Prevent deleting self
+      if (user.id === req.user!.id) {
+        return res.status(400).json({ message: "Você não pode excluir seu próprio usuário" });
+      }
+
+      // Prevent deleting user with associated driving school
+      const drivingSchool = await storage.getDrivingSchoolByUserId(user.id);
+      if (drivingSchool) {
+        return res.status(400).json({ message: "Este usuário possui uma autoescola associada. Exclua a autoescola primeiro." });
+      }
+
+      const deleted = await storage.deleteUser(req.params.id);
+      if (!deleted) {
+        return res.status(500).json({ message: "Erro ao excluir usuário" });
+      }
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "delete",
+        entity: "user",
+        entityId: req.params.id,
+        details: `Usuário excluído: ${user.username} (${user.role})`,
+      });
+
+      res.json({ message: "Usuário excluído com sucesso" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
