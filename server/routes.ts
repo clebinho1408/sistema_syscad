@@ -4,11 +4,32 @@ import { db } from "./db";
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, requireAuth, requireRole, hashPassword } from "./auth";
+import { setupAuth, requireAuth, requireRole, hashPassword, comparePassword } from "./auth";
 import passport from "passport";
 import { WebSocketServer, WebSocket } from "ws";
 import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
 import { analyzeDocument, analyzeDocumentAuthenticity, analyzeDocumentVisualQuality, extractPdfMetadata, isGeminiConfigured, PdfMetadata } from "./gemini";
+import { z } from "zod";
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Senha atual é obrigatória"),
+  newPassword: z.string().min(6, "A nova senha deve ter pelo menos 6 caracteres"),
+});
+
+const registerDrivingSchoolSchema = z.object({
+  username: z.string().min(3, "Usuário deve ter pelo menos 3 caracteres"),
+  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  email: z.string().email("Email inválido"),
+  nomeAutoescola: z.string().min(2, "Nome da autoescola é obrigatório"),
+  cep: z.string().min(8, "CEP inválido"),
+  logradouro: z.string().min(2, "Logradouro obrigatório"),
+  numero: z.string().min(1, "Número obrigatório"),
+  complemento: z.string().optional(),
+  bairro: z.string().min(2, "Bairro obrigatório"),
+  cidade: z.string().min(2, "Cidade obrigatória"),
+  uf: z.string().length(2, "UF deve ter 2 caracteres"),
+  telefone: z.string().min(10, "Telefone inválido"),
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -160,13 +181,81 @@ export async function registerRoutes(
     return res.status(401).json({ message: "Não autenticado" });
   });
 
+  // Change password (all users can change their own password)
+  app.post("/api/auth/change-password", requireAuth, async (req, res) => {
+    try {
+      const parseResult = changePasswordSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: parseResult.error.errors[0]?.message || "Dados inválidos" });
+      }
+
+      const { currentPassword, newPassword } = parseResult.data;
+
+      const user = await storage.getUser(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+
+      const isValidPassword = await comparePassword(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(400).json({ message: "Senha atual incorreta" });
+      }
+
+      const hashedNewPassword = await hashPassword(newPassword);
+      await storage.updateUser(user.id, { password: hashedNewPassword });
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "update",
+        entity: "user",
+        entityId: user.id,
+        details: "Senha alterada pelo próprio usuário",
+      });
+
+      res.json({ message: "Senha alterada com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Admin reset password to default
+  app.post("/api/users/:id/reset-password", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+
+      const DEFAULT_PASSWORD = "123456";
+      const hashedPassword = await hashPassword(DEFAULT_PASSWORD);
+      await storage.updateUser(user.id, { password: hashedPassword });
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "update",
+        entity: "user",
+        entityId: user.id,
+        details: `Senha do usuário ${user.username} resetada para padrão pelo admin`,
+      });
+
+      res.json({ message: "Senha resetada para o padrão (123456)" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.post("/api/auth/register", requireAuth, requireRole("admin"), async (req, res) => {
     try {
+      const parseResult = registerDrivingSchoolSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ message: parseResult.error.errors[0]?.message || "Dados inválidos" });
+      }
+
       const {
-        username, password, name, email,
+        username, name, email,
         nomeAutoescola, cep, logradouro, numero,
         complemento, bairro, cidade, uf, telefone
-      } = req.body;
+      } = parseResult.data;
 
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
@@ -178,7 +267,9 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Já existe uma autoescola com este nome" });
       }
 
-      const hashedPassword = await hashPassword(password);
+      // Use default password "123456" for new driving schools
+      const DEFAULT_PASSWORD = "123456";
+      const hashedPassword = await hashPassword(DEFAULT_PASSWORD);
       const user = await storage.createUser({
         username,
         password: hashedPassword,

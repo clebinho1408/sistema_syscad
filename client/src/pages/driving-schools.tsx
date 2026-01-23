@@ -19,7 +19,6 @@ import { updateDrivingSchoolSchema } from "@shared/schema";
 
 const registerSchema = z.object({
   username: z.string().min(3, "Usuário deve ter pelo menos 3 caracteres"),
-  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido"),
   nomeAutoescola: z.string().min(2, "Nome da autoescola é obrigatório"),
@@ -47,7 +46,6 @@ export default function DrivingSchoolsPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       username: "",
-      password: "",
       name: "",
       email: "",
       nomeAutoescola: "",
@@ -190,20 +188,10 @@ export default function DrivingSchoolsPage() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Senha</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="******" {...field} data-testid="input-new-password" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
+                  <p className="text-sm text-muted-foreground bg-muted p-2 rounded">
+                    A senha padrão será <strong>123456</strong>. O usuário poderá alterá-la após o primeiro login.
+                  </p>
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}

@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Settings, FileText, Shield, Info, Database, Users, Plus, Pencil, Trash2, Loader2, GripVertical, Ban, Check } from "lucide-react";
+import { Settings, FileText, Shield, Info, Database, Users, Plus, Pencil, Trash2, Loader2, GripVertical, Ban, Check, Key } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { SolicitationType, User } from "@shared/schema";
 
@@ -200,6 +200,18 @@ export default function SettingsPage() {
     },
     onError: (error: any) => {
       toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("POST", `/api/users/${id}/reset-password`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Senha resetada para o padrão (123456)" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro ao resetar senha", description: error.message, variant: "destructive" });
     },
   });
 
@@ -778,6 +790,16 @@ export default function SettingsPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => resetPasswordMutation.mutate(user.id)}
+                                disabled={resetPasswordMutation.isPending}
+                                title="Resetar Senha"
+                                data-testid={`button-reset-password-${user.id}`}
+                              >
+                                <Key className="w-4 h-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
