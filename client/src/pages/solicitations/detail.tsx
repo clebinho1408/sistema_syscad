@@ -272,12 +272,21 @@ export default function SolicitationDetailPage() {
 
   useEffect(() => {
     const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
-      popupMessagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+      if (messagesEndRef.current) {
+        const container = messagesEndRef.current.closest('[data-chat-container]');
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
+      if (popupMessagesEndRef.current) {
+        const container = popupMessagesEndRef.current.closest('[data-chat-container]');
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      }
     };
-    if (messages && messages.length > 0) {
+    if (messages && messages.length > 0 && (isChatPopupOpen || document.activeElement?.closest('[data-chat-container]'))) {
       scrollToBottom();
-      // Second attempt to handle layout shifts
       const timeoutId = setTimeout(scrollToBottom, 250);
       return () => clearTimeout(timeoutId);
     }
@@ -1759,7 +1768,7 @@ export default function SolicitationDetailPage() {
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent ref={chatContainerRef} className="flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
+            <CardContent ref={chatContainerRef} data-chat-container className="flex-1 overflow-y-auto space-y-4 p-4 min-h-0">
               {messages?.map((msg) => (
                 <div 
                   key={msg.id} 
@@ -1821,7 +1830,7 @@ export default function SolicitationDetailPage() {
                   )}
                 </DialogTitle>
               </DialogHeader>
-              <div ref={popupChatContainerRef} className="flex-1 overflow-y-auto space-y-4 p-6 min-h-0">
+              <div ref={popupChatContainerRef} data-chat-container className="flex-1 overflow-y-auto space-y-4 p-6 min-h-0">
                 {messages?.map((msg) => (
                   <div 
                     key={msg.id} 

@@ -117,7 +117,14 @@ export default function ReportsPage() {
   });
 
   const { data: searchResults, isLoading: isSearching } = useQuery<CandidateSearch[]>({
-    queryKey: ["/api/reports/candidates-search", { search: candidateSearch }],
+    queryKey: ["/api/reports/candidates-search", candidateSearch],
+    queryFn: async () => {
+      const res = await fetch(`/api/reports/candidates-search?search=${encodeURIComponent(candidateSearch)}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Erro ao buscar candidatos");
+      return res.json();
+    },
     enabled: activeTab === "audit" && candidateSearch.replace(/[.\-]/g, "").length >= 3,
   });
 
