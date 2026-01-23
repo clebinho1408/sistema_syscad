@@ -419,7 +419,7 @@ export async function registerRoutes(
         action: "create",
         entity: "solicitation",
         entityId: solicitation.id,
-        details: `Solicitação criada: ${type} - ${nomeCompleto}`,
+        details: `Requerimento criado: ${type} - ${nomeCompleto}`,
       });
 
       const fullSolicitation = await storage.getSolicitation(solicitation.id);
@@ -472,7 +472,7 @@ export async function registerRoutes(
         action: "status_change",
         entity: "solicitation",
         entityId: req.params.id,
-        details: `Status alterado para: ${status}`,
+        details: `Status do requerimento alterado para: ${status}`,
       });
 
       res.json(updated);
@@ -525,7 +525,7 @@ export async function registerRoutes(
       await storage.createChatMessage({
         solicitationId: solicitation.id,
         senderId: req.user!.id,
-        message: `[SISTEMA] Correções enviadas pela autoescola. Solicitação retornou para análise.`,
+        message: `[SISTEMA] Correções enviadas pela autoescola. Requerimento retornou para análise.`,
       });
 
       res.json(updated);
@@ -633,7 +633,7 @@ export async function registerRoutes(
       }
       
       if (pendingToken.solicitationId !== solicitationId) {
-        return res.status(400).json({ error: "Token de upload não corresponde à solicitação" });
+        return res.status(400).json({ error: "Token de upload não corresponde ao requerimento" });
       }
       
       if (pendingToken.expiresAt < Date.now()) {
