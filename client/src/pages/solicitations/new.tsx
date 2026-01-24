@@ -670,15 +670,22 @@ export default function NewSolicitationPage() {
                 control={form.control}
                 name="ear"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 mt-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="checkbox-ear"
-                      />
-                    </FormControl>
-                    <FormLabel className="font-normal cursor-pointer">EAR</FormLabel>
+                  <FormItem className="mt-4">
+                    <FormLabel>EAR</FormLabel>
+                    <Select 
+                      onValueChange={(value) => field.onChange(value === "sim")} 
+                      value={field.value ? "sim" : "nao"}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full md:w-40" data-testid="select-ear">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="nao">Não</SelectItem>
+                        <SelectItem value="sim">Sim</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </FormItem>
                 )}
               />
