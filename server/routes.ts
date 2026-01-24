@@ -450,7 +450,7 @@ export async function registerRoutes(
       }
 
       let {
-        type, cpf, nomeCompleto, nomeMae, nomePai, nacionalidade, rg, orgaoEmissor,
+        type, ear, cpf, nomeCompleto, nomeMae, nomePai, nacionalidade, rg, orgaoEmissor,
         ufEmissor, dataNascimento, cidadeNascimento, ufNascimento, cep, tipoLogradouro,
         logradouro, numero, complemento, bairro, cidade, uf, telefone1, dddCelular, telefone2, email,
         documents: documentsList
@@ -508,6 +508,7 @@ export async function registerRoutes(
         drivingSchoolId: school.id,
         conductorId: conductor.id,
         type,
+        ear: ear ?? false,
         status: "em_analise",
         operadorId: null,
         observacoesInternas: null,

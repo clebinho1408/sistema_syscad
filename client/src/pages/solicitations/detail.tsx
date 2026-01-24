@@ -715,6 +715,11 @@ export default function SolicitationDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <TypeBadge type={solicitation.type} label={getTypeLabel(solicitation.type)} />
+          {solicitation.ear && (
+            <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+              EAR
+            </Badge>
+          )}
           <StatusBadge status={solicitation.status as any} />
         </div>
       </div>

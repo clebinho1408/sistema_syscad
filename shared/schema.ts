@@ -74,6 +74,7 @@ export const solicitations = pgTable("solicitations", {
   drivingSchoolId: varchar("driving_school_id").notNull().references(() => drivingSchools.id),
   conductorId: varchar("conductor_id").notNull().references(() => conductors.id),
   type: solicitationTypeEnum("type").notNull(),
+  ear: boolean("ear").notNull().default(false),
   status: solicitationStatusEnum("status").notNull().default("em_analise"),
   operadorId: varchar("operador_id").references(() => users.id),
   observacoesInternas: text("observacoes_internas"),

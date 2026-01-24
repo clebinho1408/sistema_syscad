@@ -141,6 +141,7 @@ function validateCpf(cpf: string): boolean {
 
 const solicitationSchema = z.object({
   type: z.string().min(1, "Requerimento é obrigatório"),
+  ear: z.boolean().default(false),
   cpf: z.string().min(14, "CPF inválido").refine((val) => validateCpf(val), "CPF inválido"),
   nomeCompleto: z.string().min(2, "Nome é obrigatório").transform(toUpperWithoutAccents),
   nomeSocial: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
@@ -219,6 +220,7 @@ export default function NewSolicitationPage() {
     resolver: zodResolver(solicitationSchema),
     defaultValues: {
       type: "",
+      ear: false,
       cpf: "",
       nomeCompleto: "",
       nomeSocial: "",
@@ -661,6 +663,22 @@ export default function NewSolicitationPage() {
                       </SelectContent>
                     </Select>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="ear"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 mt-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-ear"
+                      />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer">EAR</FormLabel>
                   </FormItem>
                 )}
               />
