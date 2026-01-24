@@ -643,7 +643,7 @@ export default function SolicitationDetailPage() {
   const isFinalized = solicitation.status === "cadastro_finalizado";
   const isAguardandoPenalidade = solicitation.status === "aguardando_penalidade";
   const canEdit = user?.role === "operador" || user?.role === "admin";
-  const canViewFullData = user?.role === "operador" || user?.role === "admin" || (user?.role === "autoescola" && solicitation.autoescolaId === user.id);
+  const canViewFullData = user?.role === "operador" || user?.role === "admin" || user?.role === "autoescola";
   const isAutoescola = user?.role === "autoescola";
   const isPendente = solicitation.status === "pendente_correcao";
   
@@ -1075,7 +1075,7 @@ export default function SolicitationDetailPage() {
               {canViewFullData && (
                 <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" data-testid="button-open-full-data" onClick={(e) => e.preventDefault()}>
+                    <Button variant="outline" size="sm" data-testid="button-open-full-data">
                       <ClipboardList className="w-4 h-4 mr-2" />
                       Abrir Dados do Candidato/Condutor
                     </Button>
