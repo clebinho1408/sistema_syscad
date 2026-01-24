@@ -643,6 +643,7 @@ export default function SolicitationDetailPage() {
   const isFinalized = solicitation.status === "cadastro_finalizado";
   const isAguardandoPenalidade = solicitation.status === "aguardando_penalidade";
   const canEdit = user?.role === "operador" || user?.role === "admin";
+  const canViewFullData = user?.role === "operador" || user?.role === "admin" || (user?.role === "autoescola" && solicitation.autoescolaId === user.id);
   const isAutoescola = user?.role === "autoescola";
   const isPendente = solicitation.status === "pendente_correcao";
   
@@ -1071,7 +1072,7 @@ export default function SolicitationDetailPage() {
                 <User className="w-5 h-5" />
                 Dados do Candidato/Condutor
               </CardTitle>
-              {canEdit && (
+              {canViewFullData && (
                 <Dialog open={isDataDialogOpen} onOpenChange={setIsDataDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" data-testid="button-open-full-data" onClick={(e) => e.preventDefault()}>
