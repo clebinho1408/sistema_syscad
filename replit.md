@@ -129,9 +129,12 @@ Preferred communication style: Simple, everyday language.
 - **Local Storage Path:** Configured via `LOCAL_STORAGE_PATH` env var (default: `./uploads`)
 
 ### VPS/Self-Hosted Deployment
-- **Documentation:** See `DEPLOY.md` for complete deployment guide to VPS (Hostinger, etc.)
+- **Recommended:** Dokploy (PaaS self-hosted) - see `DEPLOY.md` section 1
+- **Alternative:** Manual deploy with PM2/Nginx - see `DEPLOY.md` section 2
+- **Docker:** `Dockerfile` included for container-based deployment
 - **Environment:** See `.env.example` for all required environment variables
 - **Key Files:**
+  - `Dockerfile`: Multi-stage build for production deployment
   - `server/storage_adapter.ts`: Storage adapter that auto-detects environment
   - `server/local_storage/`: Local file storage implementation for VPS
 

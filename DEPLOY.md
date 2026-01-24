@@ -1,8 +1,153 @@
-# Guia de Deploy - SysCad para VPS Hostinger
+# Guia de Deploy - SysCad
 
-Este guia explica como fazer o deploy do SysCad em uma VPS da Hostinger (ou qualquer VPS Linux).
+Este guia explica como fazer o deploy do SysCad em diferentes ambientes.
 
-## Requisitos
+## Opção 1: Deploy com Dokploy (Recomendado)
+
+Dokploy é uma plataforma PaaS self-hosted que simplifica o deploy de aplicações.
+
+### 1.1 Pré-requisitos
+
+- VPS com Dokploy instalado (https://dokploy.com)
+- PostgreSQL configurado no Dokploy ou externo
+
+### 1.2 Criar Aplicação no Dokploy
+
+1. No painel do Dokploy, clique em **Create Application**
+2. Escolha **Docker Compose** ou **Dockerfile**
+3. Conecte ao repositório Git ou faça upload do código
+
+### 1.3 Dockerfile
+
+Crie um `Dockerfile` na raiz do projeto:
+
+```dockerfile
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+
+RUN mkdir -p uploads && chmod 755 uploads
+
+EXPOSE 5000
+
+CMD ["node", "dist/index.cjs"]
+```
+
+### 1.4 Docker Compose (Alternativa)
+
+Se preferir usar docker-compose, crie `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - LOCAL_STORAGE_PATH=/app/uploads
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=syscad
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=syscad
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  uploads:
+  postgres_data:
+```
+
+### 1.5 Variáveis de Ambiente no Dokploy
+
+No painel do Dokploy, vá em **Environment Variables** e configure:
+
+| Variável | Valor | Obrigatório |
+|----------|-------|-------------|
+| `DATABASE_URL` | `postgresql://syscad:senha@db:5432/syscad` | Sim |
+| `SESSION_SECRET` | Chave aleatória de 32+ caracteres | Sim |
+| `NODE_ENV` | `production` | Sim |
+| `PORT` | `5000` | Sim |
+| `LOCAL_STORAGE_PATH` | `/app/uploads` | Sim |
+| `GEMINI_API_KEY` | Sua chave da API Gemini | Não (para OCR) |
+
+### 1.6 Configurar Volumes
+
+No Dokploy, configure o volume para persistir os uploads:
+- **Container Path:** `/app/uploads`
+- **Host Path:** Volume nomeado ou path absoluto
+
+### 1.7 Configurar Domínio e SSL
+
+1. Vá em **Domains** no Dokploy
+2. Adicione seu domínio (ex: `syscad.seudominio.com.br`)
+3. Habilite SSL (Let's Encrypt automático)
+
+### 1.8 Inicializar Banco de Dados
+
+Após o primeiro deploy, execute as migrations:
+
+```bash
+# No terminal do container ou via Dokploy CLI
+npm run db:push
+```
+
+### 1.9 Criar Usuário Admin
+
+Acesse o banco de dados PostgreSQL e execute:
+
+```sql
+-- Gerar hash da senha no Node.js primeiro:
+-- require('bcryptjs').hashSync('sua_senha', 10)
+
+INSERT INTO users (id, username, name, email, password, role)
+VALUES (
+  gen_random_uuid(),
+  'admin',
+  'Administrador',
+  'admin@seudominio.com.br',
+  '$2a$10$HASH_DA_SENHA_AQUI',
+  'admin'
+);
+```
+
+---
+
+## Opção 2: Deploy Manual em VPS
+
+Para deploy manual sem Dokploy, siga as instruções abaixo.
+
+### 2.1 Requisitos
 
 - VPS com Ubuntu 20.04+ ou Debian 11+
 - Node.js 18+ 
@@ -11,28 +156,28 @@ Este guia explica como fazer o deploy do SysCad em uma VPS da Hostinger (ou qual
 - Certbot (para SSL gratuito)
 - Git
 
-## 1. Preparar a VPS
+### 2.2 Preparar a VPS
 
-### 1.1 Atualizar o sistema
+#### Atualizar o sistema
 ```bash
 sudo apt update && sudo apt upgrade -y
 ```
 
-### 1.2 Instalar Node.js 20
+#### Instalar Node.js 20
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 node --version  # Deve mostrar v20.x
 ```
 
-### 1.3 Instalar PostgreSQL
+#### Instalar PostgreSQL
 ```bash
 sudo apt install -y postgresql postgresql-contrib
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
 ```
 
-### 1.4 Criar banco de dados
+#### Criar banco de dados
 ```bash
 sudo -u postgres psql
 
@@ -43,21 +188,21 @@ GRANT ALL PRIVILEGES ON DATABASE syscad TO syscad;
 \q
 ```
 
-### 1.5 Instalar Nginx
+#### Instalar Nginx
 ```bash
 sudo apt install -y nginx
 sudo systemctl start nginx
 sudo systemctl enable nginx
 ```
 
-### 1.6 Instalar PM2 (gerenciador de processos)
+#### Instalar PM2 (gerenciador de processos)
 ```bash
 sudo npm install -g pm2
 ```
 
-## 2. Baixar e Configurar o Projeto
+### 2.3 Baixar e Configurar o Projeto
 
-### 2.1 Clonar o repositório
+#### Clonar o repositório
 ```bash
 cd /var/www
 sudo git clone https://seu-repositorio.git syscad
@@ -65,12 +210,12 @@ cd syscad
 sudo chown -R $USER:$USER .
 ```
 
-### 2.2 Instalar dependências
+#### Instalar dependências
 ```bash
 npm install
 ```
 
-### 2.3 Configurar variáveis de ambiente
+#### Configurar variáveis de ambiente
 ```bash
 cp .env.example .env
 nano .env
@@ -85,25 +230,25 @@ PORT=5000
 NODE_ENV=production
 ```
 
-### 2.4 Criar diretório de uploads
+#### Criar diretório de uploads
 ```bash
 mkdir -p uploads
 chmod 755 uploads
 ```
 
-### 2.5 Configurar o banco de dados
+#### Configurar o banco de dados
 ```bash
 npm run db:push
 ```
 
-### 2.6 Build do projeto
+#### Build do projeto
 ```bash
 npm run build
 ```
 
-## 3. Configurar PM2
+### 2.4 Configurar PM2
 
-### 3.1 Criar arquivo de configuração
+#### Criar arquivo de configuração
 ```bash
 nano ecosystem.config.js
 ```
@@ -131,21 +276,21 @@ module.exports = {
 };
 ```
 
-### 3.2 Criar diretório de logs
+#### Criar diretório de logs
 ```bash
 mkdir -p logs
 ```
 
-### 3.3 Iniciar aplicação
+#### Iniciar aplicação
 ```bash
 pm2 start ecosystem.config.js
 pm2 save
 pm2 startup
 ```
 
-## 4. Configurar Nginx
+### 2.5 Configurar Nginx
 
-### 4.1 Criar configuração do site
+#### Criar configuração do site
 ```bash
 sudo nano /etc/nginx/sites-available/syscad
 ```
@@ -185,31 +330,31 @@ server {
 }
 ```
 
-### 4.2 Habilitar o site
+#### Habilitar o site
 ```bash
 sudo ln -s /etc/nginx/sites-available/syscad /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## 5. Configurar SSL (HTTPS)
+### 2.6 Configurar SSL (HTTPS)
 
-### 5.1 Instalar Certbot
+#### Instalar Certbot
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
 ```
 
-### 5.2 Obter certificado SSL
+#### Obter certificado SSL
 ```bash
 sudo certbot --nginx -d seu-dominio.com.br -d www.seu-dominio.com.br
 ```
 
-### 5.3 Configurar renovação automática
+#### Configurar renovação automática
 ```bash
 sudo certbot renew --dry-run
 ```
 
-## 6. Configurar Firewall
+### 2.7 Configurar Firewall
 
 ```bash
 sudo ufw allow ssh
@@ -217,34 +362,17 @@ sudo ufw allow 'Nginx Full'
 sudo ufw enable
 ```
 
-## 7. Criar Usuário Admin Inicial
+---
 
-Após o primeiro deploy, acesse o sistema e crie o primeiro usuário admin via banco de dados:
-
-```bash
-sudo -u postgres psql syscad
-
--- Criar hash da senha (exemplo: "admin123")
--- Use bcrypt para gerar o hash. No Node.js:
--- require('bcryptjs').hashSync('sua_senha', 10)
-
-INSERT INTO users (id, username, name, email, password, role)
-VALUES (
-  gen_random_uuid(),
-  'admin',
-  'Administrador',
-  'admin@seudominio.com.br',
-  '$2a$10$HASH_DA_SENHA_AQUI',
-  'admin'
-);
-\q
-```
-
-Ou use o script de criação de admin se disponível.
-
-## 8. Manutenção
+## 3. Manutenção
 
 ### Atualizar a aplicação
+
+**Com Dokploy:**
+- Faça push para o repositório Git
+- Dokploy detecta e faz redeploy automaticamente
+
+**Manual:**
 ```bash
 cd /var/www/syscad
 git pull origin main
@@ -254,13 +382,13 @@ pm2 restart syscad
 ```
 
 ### Ver logs
+
+**Com Dokploy:**
+- Acesse o painel e vá em **Logs**
+
+**Manual:**
 ```bash
 pm2 logs syscad
-```
-
-### Monitorar processos
-```bash
-pm2 monit
 ```
 
 ### Backup do banco de dados
@@ -268,43 +396,59 @@ pm2 monit
 pg_dump -U syscad syscad > backup_$(date +%Y%m%d).sql
 ```
 
-## 9. Estrutura de Arquivos em Produção
+---
+
+## 4. Estrutura de Arquivos em Produção
 
 ```
-/var/www/syscad/
+/app/ (ou /var/www/syscad/)
 ├── dist/              # Código compilado
-├── uploads/           # Documentos enviados
+├── uploads/           # Documentos enviados (volume persistente!)
 ├── logs/              # Logs da aplicação
 ├── .env               # Configurações
-├── ecosystem.config.js # Config PM2
 └── ...
 ```
 
-## 10. Troubleshooting
+---
+
+## 5. Troubleshooting
 
 ### Aplicação não inicia
 ```bash
+# Dokploy: Ver logs no painel
+# Manual:
 pm2 logs syscad --lines 100
 ```
 
 ### Erro de conexão com banco
-```bash
-sudo -u postgres psql -c "\l"  # Listar bancos
-sudo systemctl status postgresql
-```
+- Verifique se o PostgreSQL está rodando
+- Confirme a `DATABASE_URL` está correta
+- No Dokploy, verifique se o serviço `db` está no mesmo network
 
 ### WebSocket não funciona
-Verifique se a configuração do Nginx tem suporte a WebSocket (location /ws).
+- Verifique configuração de proxy para WebSocket
+- No Dokploy, confirme que a porta 5000 está exposta
 
 ### Arquivos não fazem upload
 ```bash
 ls -la uploads/
 chmod 755 uploads/
 ```
+- No Dokploy, verifique se o volume está configurado corretamente
 
-## Contato
+### OCR não funciona
+- Confirme que `GEMINI_API_KEY` está configurada
+- Verifique os logs para erros da API Gemini
 
-Em caso de problemas, verifique os logs em:
-- `/var/www/syscad/logs/`
-- `/var/log/nginx/error.log`
-- `pm2 logs`
+---
+
+## 6. Variáveis de Ambiente
+
+| Variável | Descrição | Obrigatório |
+|----------|-----------|-------------|
+| `DATABASE_URL` | URL de conexão PostgreSQL | Sim |
+| `SESSION_SECRET` | Chave para criptografia de sessão | Sim |
+| `NODE_ENV` | Ambiente (production) | Sim |
+| `PORT` | Porta da aplicação (5000) | Sim |
+| `LOCAL_STORAGE_PATH` | Caminho para uploads | Sim |
+| `GEMINI_API_KEY` | Chave API Google Gemini | Não |
