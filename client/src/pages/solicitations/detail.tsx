@@ -1122,6 +1122,7 @@ export default function SolicitationDetailPage() {
                         <CopyableField label="Data Nascimento" value={format(new Date(solicitation.conductor.dataNascimento + 'T12:00:00'), "dd/MM/yyyy")} fieldName="dataNascimento" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         <CopyableField label="Identidade" value={solicitation.conductor.rg} fieldName="rg" copiedFields={copiedFields} onCopy={copyToClipboard} />
                         <CopyableField label="Órgão Emissor" value={solicitation.conductor.orgaoEmissor} fieldName="orgaoEmissor" copiedFields={copiedFields} onCopy={copyToClipboard} />
+                        <CopyableField label="EAR" value={solicitation.ear ? "Sim" : "Não"} fieldName="ear" copiedFields={copiedFields} onCopy={copyToClipboard} />
                       </div>
                     </div>
                     <DialogFooter>
@@ -1167,6 +1168,10 @@ export default function SolicitationDetailPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Órgão Emissor / UF</p>
                 <p className="font-medium">{solicitation.conductor.orgaoEmissor}/{solicitation.conductor.ufEmissor}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">EAR</p>
+                <p className="font-medium">{solicitation.ear ? "Sim" : "Não"}</p>
               </div>
             </CardContent>
           </Card>
