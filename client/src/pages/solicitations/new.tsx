@@ -141,7 +141,7 @@ function validateCpf(cpf: string): boolean {
 
 const solicitationSchema = z.object({
   type: z.string().min(1, "Requerimento é obrigatório"),
-  ear: z.boolean().default(false),
+  ear: z.boolean({ required_error: "EAR é obrigatório" }),
   cpf: z.string().min(14, "CPF inválido").refine((val) => validateCpf(val), "CPF inválido"),
   nomeCompleto: z.string().min(2, "Nome é obrigatório").transform(toUpperWithoutAccents),
   nomeSocial: z.string().optional().transform((val) => val ? toUpperWithoutAccents(val) : val),
@@ -220,7 +220,7 @@ export default function NewSolicitationPage() {
     resolver: zodResolver(solicitationSchema),
     defaultValues: {
       type: "",
-      ear: false,
+      ear: undefined as unknown as boolean,
       cpf: "",
       nomeCompleto: "",
       nomeSocial: "",
@@ -671,10 +671,10 @@ export default function NewSolicitationPage() {
                 name="ear"
                 render={({ field }) => (
                   <FormItem className="mt-4">
-                    <FormLabel>EAR</FormLabel>
+                    <FormLabel>EAR *</FormLabel>
                     <Select 
                       onValueChange={(value) => field.onChange(value === "sim")} 
-                      value={field.value ? "sim" : "nao"}
+                      value={field.value === undefined ? "" : field.value ? "sim" : "nao"}
                     >
                       <FormControl>
                         <SelectTrigger className="w-full md:w-40" data-testid="select-ear">
@@ -686,6 +686,7 @@ export default function NewSolicitationPage() {
                         <SelectItem value="sim">Sim</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
