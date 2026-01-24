@@ -112,18 +112,28 @@ Preferred communication style: Simple, everyday language.
 
 ### Object Storage Integration
 - **Purpose:** Store document files externally instead of base64 in database
-- **Service:** Replit Object Storage (GCS-backed)
+- **Service:** Replit Object Storage (in Replit) or Local File Storage (in VPS/self-hosted)
+- **Environment Detection:** Automatic - uses Replit Object Storage if REPL_ID and DEFAULT_OBJECT_STORAGE_BUCKET_ID are set, otherwise uses local storage
 - **Routes:**
-  - `POST /api/documents/request-upload-url`: Get presigned upload URL with token binding
+  - `POST /api/documents/request-upload-url`: Get upload URL with token binding
+  - `PUT /api/uploads/:uploadId`: Direct file upload (local/VPS mode only, requires valid token)
   - `POST /api/documents/save`: Save document metadata after upload (validates token)
   - `GET /api/documents/:id/download`: Download document (supports both object storage and legacy base64)
-  - `GET /objects/*`: Serve files directly from object storage (requires auth + ACL check)
+  - `GET /objects/*`: Serve files from storage (requires auth + ACL check)
 - **Security Model:**
   - Token binding system validates upload requests belong to authorized users
   - ACL policies set on files with owner verification
   - One-time use tokens with 15-minute expiration
 - **Database Schema:** documents table has `fileKey` (object path) and `fileData` (nullable, legacy base64)
 - **Backward Compatibility:** Existing base64 documents continue to work during gradual migration
+- **Local Storage Path:** Configured via `LOCAL_STORAGE_PATH` env var (default: `./uploads`)
+
+### VPS/Self-Hosted Deployment
+- **Documentation:** See `DEPLOY.md` for complete deployment guide to VPS (Hostinger, etc.)
+- **Environment:** See `.env.example` for all required environment variables
+- **Key Files:**
+  - `server/storage_adapter.ts`: Storage adapter that auto-detects environment
+  - `server/local_storage/`: Local file storage implementation for VPS
 
 ### Document OCR Integration
 - **Purpose:** Automatically extract data from ID documents (RG, CNH) to pre-fill solicitation forms

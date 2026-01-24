@@ -7,10 +7,11 @@ import { storage } from "./storage";
 import { setupAuth, requireAuth, requireRole, hashPassword, comparePassword } from "./auth";
 import passport from "passport";
 import { WebSocketServer, WebSocket } from "ws";
-import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
+import { getStorageAdapter, type StorageAdapter } from "./storage_adapter";
 import { analyzeDocument, analyzeDocumentAuthenticity, analyzeDocumentVisualQuality, extractPdfMetadata, isGeminiConfigured, PdfMetadata } from "./gemini";
 import { z } from "zod";
 import { compressDocument } from "./compression";
+import * as fs from "fs/promises";
 
 const MAX_PDF_SIZE = 3 * 1024 * 1024;
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024;
@@ -57,9 +58,8 @@ export async function registerRoutes(
 ): Promise<Server> {
   setupAuth(app);
   
-  // Register Object Storage routes
-  registerObjectStorageRoutes(app);
-  const objectStorageService = new ObjectStorageService();
+  // Get the appropriate storage adapter (Replit Object Storage or Local)
+  const storageAdapter = await getStorageAdapter();
   
   // Store pending upload tokens (objectPath -> { userId, solicitationId, expiresAt })
   const pendingUploadTokens = new Map<string, { userId: string; solicitationId: string; expiresAt: number }>();
@@ -816,8 +816,9 @@ export async function registerRoutes(
         }
       }
 
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+      const uploadResult = await storageAdapter.generateUploadPath();
+      const { objectPath, uploadId } = uploadResult;
+      const uploadURL = uploadResult.uploadURL;
 
       // Store the pending upload token (expires in 15 minutes)
       pendingUploadTokens.set(objectPath, {
@@ -827,13 +828,95 @@ export async function registerRoutes(
       });
 
       res.json({
-        uploadURL,
+        uploadURL: uploadURL || `/api/uploads/${uploadId}`,
         objectPath,
+        uploadId,
+        useDirectUpload: !storageAdapter.isPresignedUpload(),
         metadata: { name, size, contentType, solicitationId, category },
       });
     } catch (error) {
       console.error("Error generating upload URL:", error);
       res.status(500).json({ error: "Falha ao gerar URL de upload" });
+    }
+  });
+
+  // Route for serving uploaded objects (works for both Replit and local storage)
+  app.get("/objects/*splat", requireAuth, async (req, res) => {
+    try {
+      const objectPath = "/objects/" + (req.params as any).splat;
+      const fileHandle = await storageAdapter.getFile(objectPath);
+
+      const userId = (req.user as any)?.id;
+      const canAccess = await storageAdapter.canAccessObject({
+        userId,
+        fileHandle,
+      });
+
+      if (!canAccess) {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
+
+      await storageAdapter.downloadObject(fileHandle, res);
+    } catch (error: any) {
+      console.error("Error serving object:", error);
+      if (error.name === "ObjectNotFoundError") {
+        return res.status(404).json({ error: "Object not found" });
+      }
+      return res.status(500).json({ error: "Failed to serve object" });
+    }
+  });
+
+  // Route for direct file upload (used when not using presigned URLs - e.g., local/VPS environment)
+  app.put("/api/uploads/:uploadId", requireAuth, async (req, res) => {
+    try {
+      const { uploadId } = req.params;
+      const objectPath = `/objects/uploads/${uploadId}`;
+      const user = req.user!;
+      
+      // Validate the upload token - ensures uploadId was issued by request-upload-url
+      const pendingToken = pendingUploadTokens.get(objectPath);
+      if (!pendingToken) {
+        return res.status(400).json({ error: "Token de upload inválido ou expirado" });
+      }
+      
+      // Validate token ownership
+      if (pendingToken.userId !== user.id) {
+        return res.status(403).json({ error: "Token de upload não pertence a este usuário" });
+      }
+      
+      // Check expiration
+      if (pendingToken.expiresAt < Date.now()) {
+        pendingUploadTokens.delete(objectPath);
+        return res.status(400).json({ error: "Token de upload expirado" });
+      }
+      
+      const chunks: Buffer[] = [];
+      
+      req.on("data", (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+
+      req.on("end", async () => {
+        try {
+          const buffer = Buffer.concat(chunks);
+          const contentType = req.headers["content-type"] || "application/octet-stream";
+          
+          await storageAdapter.saveFile(objectPath, buffer, contentType);
+          
+          res.status(200).json({ success: true, objectPath });
+        } catch (error) {
+          console.error("Error saving file:", error);
+          res.status(500).json({ error: "Failed to save file" });
+        }
+      });
+
+      req.on("error", (error) => {
+        console.error("Upload error:", error);
+        res.status(500).json({ error: "Upload failed" });
+      });
+    } catch (error) {
+      console.error("Error handling upload:", error);
+      res.status(500).json({ error: "Failed to handle upload" });
     }
   });
 
@@ -872,7 +955,7 @@ export async function registerRoutes(
       pendingUploadTokens.delete(fileKey);
 
       // Set ACL policy for the uploaded file
-      await objectStorageService.trySetObjectEntityAclPolicy(fileKey, {
+      await storageAdapter.setAclPolicy(fileKey, {
         owner: user.id,
         visibility: "private",
       });
@@ -924,11 +1007,11 @@ export async function registerRoutes(
       // If document is in object storage
       if (document.fileKey) {
         try {
-          const objectFile = await objectStorageService.getObjectEntityFile(document.fileKey);
-          await objectStorageService.downloadObject(objectFile, res);
+          const fileHandle = await storageAdapter.getFile(document.fileKey);
+          await storageAdapter.downloadObject(fileHandle, res);
           return;
         } catch (error) {
-          console.error("Error fetching from object storage:", error);
+          console.error("Error fetching from storage:", error);
           return res.status(404).json({ error: "Arquivo não encontrado no armazenamento" });
         }
       }
@@ -1100,15 +1183,10 @@ export async function registerRoutes(
       // Get document content from object storage or base64
       if (document.fileKey) {
         try {
-          const objectFile = await objectStorageService.getObjectEntityFile(document.fileKey);
-          const chunks: Buffer[] = [];
-          for await (const chunk of objectFile.createReadStream()) {
-            chunks.push(Buffer.from(chunk));
-          }
-          fileBuffer = Buffer.concat(chunks);
+          fileBuffer = await storageAdapter.getFileBuffer(document.fileKey);
           imageBase64 = fileBuffer.toString("base64");
         } catch (error) {
-          console.error("Error fetching from object storage:", error);
+          console.error("Error fetching from storage:", error);
           return res.status(404).json({ error: "Arquivo não encontrado no armazenamento" });
         }
       } else if (document.fileData) {
@@ -1193,14 +1271,10 @@ export async function registerRoutes(
       // Get document content from object storage or base64
       if (document.fileKey) {
         try {
-          const objectFile = await objectStorageService.getObjectEntityFile(document.fileKey);
-          const chunks: Buffer[] = [];
-          for await (const chunk of objectFile.createReadStream()) {
-            chunks.push(Buffer.from(chunk));
-          }
-          imageBase64 = Buffer.concat(chunks).toString("base64");
+          const fileBuffer = await storageAdapter.getFileBuffer(document.fileKey);
+          imageBase64 = fileBuffer.toString("base64");
         } catch (error) {
-          console.error("Error fetching from object storage:", error);
+          console.error("Error fetching from storage:", error);
           return res.status(404).json({ error: "Arquivo não encontrado no armazenamento" });
         }
       } else if (document.fileData) {
