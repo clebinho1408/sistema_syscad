@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Settings, FileText, Shield, Info, Database, Users, Plus, Pencil, Trash2, Loader2, GripVertical, Ban, Check, Key } from "lucide-react";
+import { Settings, FileText, Shield, Info, Database, Users, Plus, Pencil, Trash2, Loader2, GripVertical, Ban, Check, Key, Cpu, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { SolicitationType, User } from "@shared/schema";
 
@@ -33,8 +33,34 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   
   // Check OCR availability
-  const { data: ocrStatus } = useQuery<{ available: boolean }>({
+  const { data: ocrStatus, refetch: refetchOcrStatus } = useQuery<{ available: boolean }>({
     queryKey: ["/api/documents/ocr-status"],
+  });
+
+  // ============ GEMINI API KEY CONFIG ============
+  const [geminiKey, setGeminiKey] = useState("");
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+
+  const saveGeminiKeyMutation = useMutation({
+    mutationFn: async (apiKey: string) => {
+      return apiRequest("POST", "/api/system/config/gemini-key", { apiKey });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Chave configurada!",
+        description: "OCR com IA agora está disponível para leitura de documentos.",
+      });
+      setGeminiKey("");
+      refetchOcrStatus();
+      queryClient.invalidateQueries({ queryKey: ["/api/documents/ocr-status"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao salvar chave",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   // ============ SOLICITATION TYPES STATE ============
@@ -484,7 +510,7 @@ export default function SettingsPage() {
                       variant={ocrStatus?.available ? "default" : "secondary"} 
                       className={`text-xs ${ocrStatus?.available ? 'bg-emerald-600' : ''}`}
                     >
-                      {ocrStatus?.available ? "Disponível" : "Não configurado"}
+                      {ocrStatus?.available ? "Disponível (IA Gemini)" : "Local (Tesseract)"}
                     </Badge>
                   </div>
                   <Separator />
@@ -496,6 +522,73 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Gemini API Key Configuration - Admin only */}
+          {currentUser?.role === "admin" && (
+            <Card className="border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Cpu className="w-5 h-5 text-blue-600" />
+                  Configuração do OCR com Inteligência Artificial
+                </CardTitle>
+                <CardDescription>
+                  Configure a chave da API Gemini para ativar o preenchimento automático de formulários via leitura de documentos (RG, CNH).
+                  Obtenha sua chave gratuitamente em{" "}
+                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="text-blue-600 underline">
+                    aistudio.google.com/apikey
+                  </a>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium">Status atual:</span>
+                  <Badge 
+                    variant={ocrStatus?.available ? "default" : "secondary"} 
+                    className={`text-xs ${ocrStatus?.available ? 'bg-emerald-600' : 'bg-yellow-500 text-white'}`}
+                  >
+                    {ocrStatus?.available ? "✓ Gemini AI Ativo" : "⚡ OCR Local (Tesseract)"}
+                  </Badge>
+                </div>
+                {!ocrStatus?.available && (
+                  <p className="text-sm text-muted-foreground bg-yellow-50 border border-yellow-200 rounded p-3">
+                    Sem a chave Gemini, o sistema usa OCR local (Tesseract) que funciona com qualidade básica. 
+                    Com a chave Gemini, a precisão de leitura de documentos é muito superior.
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type={showGeminiKey ? "text" : "password"}
+                      placeholder="Cole aqui sua chave: AIzaSy..."
+                      value={geminiKey}
+                      onChange={(e) => setGeminiKey(e.target.value)}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGeminiKey(!showGeminiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showGeminiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <Button
+                    onClick={() => saveGeminiKeyMutation.mutate(geminiKey)}
+                    disabled={!geminiKey || geminiKey.length < 10 || saveGeminiKeyMutation.isPending}
+                  >
+                    {saveGeminiKeyMutation.isPending ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvando...</>
+                    ) : (
+                      <><Key className="w-4 h-4 mr-2" /> Salvar Chave</>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  A chave é salva de forma segura no servidor. Após salvar, o OCR com IA estará disponível imediatamente.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* User Roles Section */}
           <Card>

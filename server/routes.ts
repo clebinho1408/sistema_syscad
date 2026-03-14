@@ -9,6 +9,7 @@ import passport from "passport";
 import { WebSocketServer, WebSocket } from "ws";
 import { getStorageAdapter, type StorageAdapter } from "./storage_adapter";
 import { analyzeDocument, analyzeDocumentAuthenticity, analyzeDocumentVisualQuality, extractPdfMetadata, isGeminiConfigured, PdfMetadata } from "./gemini";
+import { analyzeDocumentOcr, isOcrConfigured } from "./openai_ocr";
 import { z } from "zod";
 import { compressDocument } from "./compression";
 import * as fs from "fs/promises";
@@ -761,23 +762,28 @@ export async function registerRoutes(
     }
   });
 
-  // Route for analyzing document with OCR (Gemini AI)
+  // Route for analyzing document with OCR (OpenAI Vision / Gemini AI)
   app.post("/api/documents/analyze", requireAuth, async (req, res) => {
     try {
-      if (!isGeminiConfigured()) {
-        return res.status(503).json({ 
-          error: "Reconhecimento de documentos não configurado",
-          message: "A chave GEMINI_API_KEY não está configurada no sistema"
-        });
-      }
-
       const { imageBase64, mimeType } = req.body;
 
       if (!imageBase64 || !mimeType) {
         return res.status(400).json({ error: "Imagem e tipo MIME são obrigatórios" });
       }
 
-      const result = await analyzeDocument(imageBase64, mimeType);
+      let result;
+      // Try OpenAI OCR first (GenSpark API), fallback to Gemini
+      if (isOcrConfigured()) {
+        result = await analyzeDocumentOcr(imageBase64, mimeType);
+      } else if (isGeminiConfigured()) {
+        result = await analyzeDocument(imageBase64, mimeType);
+      } else {
+        return res.status(503).json({ 
+          error: "Reconhecimento de documentos não configurado",
+          message: "Nenhuma chave de API de OCR está configurada no sistema"
+        });
+      }
+
       res.json(result);
     } catch (error: any) {
       console.error("Error analyzing document:", error);
@@ -790,7 +796,7 @@ export async function registerRoutes(
 
   // Route to check if OCR is available
   app.get("/api/documents/ocr-status", requireAuth, async (req, res) => {
-    res.json({ available: isGeminiConfigured() });
+    res.json({ available: isOcrConfigured() || isGeminiConfigured() });
   });
 
   // Route for requesting presigned URL for document upload
@@ -2136,6 +2142,61 @@ export async function registerRoutes(
       }
       
       res.json({ success: deleted });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Route to get system config (admin only)
+  app.get("/api/system/config", requireAuth, requireRole("admin"), async (req, res) => {
+    res.json({
+      geminiApiKey: process.env.GEMINI_API_KEY ? "***configured***" : "",
+      geminiConfigured: !!process.env.GEMINI_API_KEY,
+    });
+  });
+
+  // Route to set Gemini API key (admin only)
+  app.post("/api/system/config/gemini-key", requireAuth, requireRole("admin"), async (req, res) => {
+    try {
+      const { apiKey } = req.body;
+      
+      if (!apiKey || typeof apiKey !== "string" || apiKey.trim().length < 10) {
+        return res.status(400).json({ message: "Chave de API inválida" });
+      }
+
+      // Set the key in the current process environment
+      process.env.GEMINI_API_KEY = apiKey.trim();
+      
+      // Reset the Gemini AI client so it will be re-initialized with new key
+      const geminiModule = await import("./gemini");
+      // @ts-ignore
+      if (geminiModule.resetAI) geminiModule.resetAI();
+
+      // Persist to .env file for restarts
+      const envPath = "/home/user/webapp/.env";
+      const { readFile, writeFile } = await import("fs/promises");
+      
+      try {
+        let envContent = await readFile(envPath, "utf-8");
+        if (envContent.includes("GEMINI_API_KEY=")) {
+          envContent = envContent.replace(/GEMINI_API_KEY=.*/g, `GEMINI_API_KEY=${apiKey.trim()}`);
+        } else {
+          envContent += `\nGEMINI_API_KEY=${apiKey.trim()}\n`;
+        }
+        await writeFile(envPath, envContent, "utf-8");
+      } catch (fileError) {
+        console.error("Could not persist GEMINI_API_KEY to .env:", fileError);
+      }
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "update",
+        entity: "system_config",
+        entityId: "gemini_api_key",
+        details: "Chave Gemini API configurada pelo admin",
+      });
+
+      res.json({ message: "Chave configurada com sucesso! OCR agora está disponível." });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }

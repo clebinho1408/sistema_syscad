@@ -3,6 +3,10 @@ import { PDFDocument } from "pdf-lib";
 
 let ai: GoogleGenAI | null = null;
 
+export function resetAI(): void {
+  ai = null;
+}
+
 function getAI(): GoogleGenAI {
   if (!ai) {
     const apiKey = process.env.GEMINI_API_KEY;
